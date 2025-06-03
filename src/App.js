@@ -17,7 +17,9 @@ function App() {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
 
   // Core market data states
+  // eslint-disable-next-line no-unused-vars
   const [sp500Price, setSp500Price] = useState(5000);
+  // eslint-disable-next-line no-unused-vars
   const [collateralizationRatio, setCollateralizationRatio] = useState(150);
 
   // User holdings & activities

@@ -1,6 +1,6 @@
 import React from 'react';
-import { DollarSign, BarChart3, TrendingUp, Landmark, PiggyBank } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { DollarSign, TrendingUp, Landmark, PiggyBank } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, recentActivities, userLpHoldingsValue }) => {
   const userCollateralValue = userSspyHoldings * sp500Price * (collateralizationRatio / 100);
