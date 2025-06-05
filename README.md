@@ -16,6 +16,8 @@
 
 ## About
 
+https://etfinity.com
+
 This repository houses the complete user interface for **Etfinity**, a pioneering platform democratizing access to synthetic Exchange-Traded Funds (ETFs) like sSPY. This application serves as a comprehensive showcase of how users can gain traditional market exposure directly within their crypto wallets, without the need for traditional brokers or banks.
 
 **Note:** This is a **DEMONSTRATION APPLICATION**. No real funds are used, and all wallet connections, transactions, and market data are simulated within the frontend for illustrative purposes.
