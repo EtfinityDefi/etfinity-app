@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Github, Linkedin, Disc, Send } from 'lucide-react';
-// MODIFIED IMPORT PATH:
-import TelegramIcon from '../components/icons/TelegramIcon'; // <-- UPDATED PATH
+import { Mail, MessageSquare, Github, Linkedin, Disc, Send, X } from 'lucide-react'; // Added X for Twitter
+import TelegramIcon from '../components/icons/TelegramIcon.js';
 
 const AboutPage = () => {
   const [formData, setFormData] = useState({
@@ -150,6 +149,10 @@ const AboutPage = () => {
           </h3>
           <p className="text-zinc-300 text-lg mb-8">Connect with us on our social channels!</p>
           <div className="flex flex-wrap justify-center gap-6">
+            <a href="https://x.com/etfinity_defi" target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center text-zinc-300 hover:text-purple-400 transition-colors duration-200">
+              <X size={48} className="mb-2 group-hover:scale-110 transition-transform duration-200" />
+              <span className="text-lg font-semibold">X (Twitter)</span>
+            </a>
             <a href="https://discord.com/invite/U3tBuH9J" target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center text-zinc-300 hover:text-purple-400 transition-colors duration-200">
               <Disc size={48} className="mb-2 group-hover:scale-110 transition-transform duration-200" />
               <span className="text-lg font-semibold">Discord</span>
