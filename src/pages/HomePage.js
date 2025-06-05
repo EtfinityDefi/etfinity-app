@@ -1,15 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { DollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
 
-// Original Etfinity Geometric Logo SVG Component (assuming this is imported or defined elsewhere if not in App.js)
-// For this standalone HomePage.js, we'll include a placeholder or assume it's passed as a prop if needed.
-// For simplicity, let's assume it's not directly used within HomePage.js for now, or you'd import it.
-// If it was used, you'd need to import it or pass it down.
-// For now, removing it as it's not directly part of the HomePage component's logic.
-
 const HomePage = ({
   isConnected,
-  userUsdcHoldings, // This will now dynamically change
+  userUsdcHoldings, 
   setUserUsdcHoldings,
   userSspyHoldings,
   setUserSspyHoldings,
@@ -63,14 +57,14 @@ const HomePage = ({
     if (activeTab === 'mint') {
       setSspyAmount(calculateSspy(collateralAmount));
     }
-  }, [collateralAmount, activeTab, calculateSspy]); // Added calculateSspy to dependencies
+  }, [collateralAmount, activeTab, calculateSspy]); 
 
   // Update collateral amount when sSPY amount changes (for redeem tab)
   useEffect(() => {
     if (activeTab === 'redeem') {
       setCollateralAmount(calculateCollateral(sspyAmount));
     }
-  }, [sspyAmount, activeTab, calculateCollateral]); // Added calculateCollateral to dependencies
+  }, [sspyAmount, activeTab, calculateCollateral]); 
 
   const handleMint = () => {
     setMintError('');

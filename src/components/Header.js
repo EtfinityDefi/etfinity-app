@@ -13,9 +13,7 @@ const Header = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Debugging: Log props received by Header whenever they change
   useEffect(() => {
-    console.log("Header.js: Props updated - isConnected:", isConnected, "walletAddress:", walletAddress);
   }, [isConnected, walletAddress]);
 
 
@@ -32,9 +30,6 @@ const Header = ({
   };
 
   const truncateAddress = (address) => {
-    // Debugging: Log the address inside truncateAddress
-    console.log("Header.js: truncateAddress called with:", address, "type:", typeof address);
-
     if (typeof address !== 'string' || !address) {
       console.log("Header.js: truncateAddress returning empty string due to invalid address type or value.");
       return '';

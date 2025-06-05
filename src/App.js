@@ -6,6 +6,8 @@ import SwapPage from './pages/SwapPage';
 import FAQPage from './pages/FAQPage';
 import AboutPage from './pages/AboutPage';
 import HomePage from './pages/HomePage';
+import TermsAndConditionsPage from './pages/TermsAndConditionsPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 
 import WalletConnectModal from './components/WalletConnectModal';
 import Footer from './components/Footer';
@@ -45,6 +47,10 @@ function App() {
     // Debugging: Log the final address being set in state
     console.log("App.js: Final walletAddress being set:", finalAddress);
     console.log("App.js: isConnected being set to true");
+  };
+
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -106,8 +112,10 @@ function App() {
         {currentPage === 'swap' && <SwapPage />}
         {currentPage === 'faq' && <FAQPage />}
         {currentPage === 'about' && <AboutPage />}
+        {currentPage === 'termsAndConditions' && <TermsAndConditionsPage />}
+        {currentPage === 'privacyPolicy' && <PrivacyPolicyPage />}
       </main>
-      <Footer />
+      <Footer onNavigate={handleNavigate} />
 
       <WalletConnectModal
         isOpen={isWalletModalOpen}

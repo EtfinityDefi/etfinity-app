@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, MessageSquare, Github, Linkedin, Disc, Send, X } from 'lucide-react'; // Added X for Twitter
+import { Mail, MessageSquare, Github, Linkedin, Disc, Send, X } from 'lucide-react';
 import TelegramIcon from '../components/icons/TelegramIcon.js';
 
 const AboutPage = () => {

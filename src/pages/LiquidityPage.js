@@ -116,18 +116,18 @@ import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
       };
     
       return (
-        <main className="container mx-auto px-4 py-8 max-w-4xl"> {/* Increased max-width for better layout */}
+        <main className="container mx-auto px-4 py-8 max-w-4xl">
           <h2 className="text-4xl font-bold text-white mb-8 text-center drop-shadow-md">Liquidity Pool</h2>
     
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8"> {/* Two-column layout for desktop */}
             {/* Add Liquidity Section */}
             <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700 flex flex-col">
               <h3 className="text-2xl font-bold text-white mb-4 flex items-center justify-center">
-                <ArrowUpCircle size={28} className="mr-3 text-purple-400" /> Add Liquidity {/* Changed icon and color */}
+                <ArrowUpCircle size={28} className="mr-3 text-purple-400" /> Add Liquidity 
               </h3>
               <p className="text-zinc-300 text-sm mb-6 text-center">Provide sSPY and USDC to the liquidity pool to earn trading fees (APR: 12.3%).</p>
     
-              <div className="space-y-5 flex-grow"> {/* flex-grow to push button to bottom */}
+              <div className="space-y-5 flex-grow"> 
                 <div className="relative">
                   <label htmlFor="sspy-add-lp" className="block text-zinc-300 text-sm font-medium mb-2">
                     sSPY Amount
@@ -177,7 +177,7 @@ import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
             {/* Remove Liquidity Section */}
             <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700 flex flex-col">
               <h3 className="2xl font-bold text-white mb-4 flex items-center justify-center">
-                <ArrowDownCircle size={28} className="mr-3 text-purple-400" /> Remove Liquidity {/* Changed icon and color */}
+                <ArrowDownCircle size={28} className="mr-3 text-purple-400" /> Remove Liquidity 
               </h3>
               <p className="text-zinc-300 text-sm mb-6 text-center">Withdraw your assets from the sSPY/USDC liquidity pool.</p>
     
