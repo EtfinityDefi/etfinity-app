@@ -104,15 +104,15 @@ const Header = ({
               className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors duration-200 text-sm"
             >
               <Wallet size={18} />
-              <span>{truncateAddress(walletAddress)}</span>
+              <span className="hidden xs:inline-block">{truncateAddress(walletAddress)}</span>
             </button>
           ) : (
             <button
               onClick={() => { setIsWalletModalOpen(true); setIsMobileMenuOpen(false); }}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-lg flex items-center space-x-2 transition-colors duration-200 text-sm"
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-2 xs:px-4 rounded-lg flex items-center space-x-0 xs:space-x-2 transition-colors duration-200 text-sm"
             >
               <Wallet size={18} />
-              <span>Connect Wallet</span>
+              <span className="hidden xs:inline-block">Connect Wallet</span>
             </button>
           )}
 

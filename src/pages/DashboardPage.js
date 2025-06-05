@@ -2,7 +2,7 @@ import React from 'react';
 import { DollarSign, TrendingUp, Landmark, PiggyBank } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, recentActivities, userLpHoldingsValue }) => {
+const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, recentActivities, userLpHoldingsValue, isConnected }) => {
   const userCollateralValue = userSspyHoldings * sp500Price * (collateralizationRatio / 100);
 
   // Static data for S&P 500 price chart
@@ -30,12 +30,14 @@ const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, r
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <TrendingUp size={36} className="text-purple-400 mb-3" />
           <p className="text-zinc-300 text-sm">Your sSPY Holdings</p>
-          <p className="text-3xl font-bold text-white">{userSspyHoldings.toFixed(4)} sSPY</p>
+          <p className="text-3xl font-bold text-white">{isConnected ? userSspyHoldings.toFixed(4) : (0).toFixed(4)} sSPY</p>
         </div>
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <DollarSign size={36} className="text-green-400 mb-3" />
           <p className="text-zinc-300 text-sm">Total Collateral Value</p>
-          <p className="text-3xl font-bold text-white">${userCollateralValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold text-white">
+            ${isConnected ? userCollateralValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (0).toFixed(2)}
+          </p>
         </div>
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <Landmark size={36} className="text-blue-400 mb-3" />
@@ -45,7 +47,9 @@ const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, r
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <PiggyBank size={36} className="text-yellow-400 mb-3" />
           <p className="text-zinc-300 text-sm">Your LP Value</p>
-          <p className="text-3xl font-bold text-white">${userLpHoldingsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          <p className="text-3xl font-bold text-white">
+            ${isConnected ? userLpHoldingsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (0).toFixed(2)}
+          </p>
         </div>
       </div>
 
@@ -79,21 +83,23 @@ const DashboardPage = ({ sp500Price, collateralizationRatio, userSspyHoldings, r
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
-        <h3 className="text-2xl font-bold text-white mb-4">Recent Activity</h3>
-        {recentActivities.length > 0 ? (
-          <ul className="space-y-3 text-zinc-300">
-            {recentActivities.map((activity, index) => (
-              <li key={index} className="flex justify-between items-center bg-zinc-700 p-3 rounded-lg">
-                <span>{activity.description}</span>
-                <span className="text-zinc-400 text-sm">{activity.time}</span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-zinc-400 text-center">No recent activity yet.</p>
-        )}
-      </div>
+      {isConnected && ( 
+        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
+          <h3 className="text-2xl font-bold text-white mb-4">Recent Activity</h3>
+          {recentActivities.length > 0 ? (
+            <ul className="space-y-3 text-zinc-300">
+              {recentActivities.map((activity, index) => (
+                <li key={index} className="flex justify-between items-center bg-zinc-700 p-3 rounded-lg">
+                  <span>{activity.description}</span>
+                  <span className="text-zinc-400 text-sm">{activity.time}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-zinc-400 text-center">No recent activity yet.</p>
+          )}
+        </div>
+      )} 
     </main>
   );
 };

@@ -86,6 +86,7 @@ function App() {
             userSspyHoldings={userSspyHoldings}
             recentActivities={recentActivities}
             userLpHoldingsValue={userLpHoldingsValue}
+            isConnected={isConnected}
           />
         }
         {currentPage === 'liquidity' &&

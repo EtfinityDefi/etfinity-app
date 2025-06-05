@@ -6,6 +6,9 @@ module.exports = {
     ],
     theme: {
       extend: {
+        screens: {
+          'xs': '360px', // Custom breakpoint for screens wider than 400px
+        },
         fontFamily: {
           inter: ['Inter', 'sans-serif'], // Define custom font if needed
         },
@@ -26,7 +29,7 @@ module.exports = {
             '800': '#27272A',
             '900': '#18181B',
             '950': '#09090B',
-          }
+          },
         }
       },
     },
