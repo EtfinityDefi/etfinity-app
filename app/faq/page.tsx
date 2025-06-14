@@ -1,11 +1,22 @@
+'use client'; 
+
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react'; // Import icons for accordion
+import { ChevronDown, ChevronUp } from 'lucide-react'; 
 
-const FAQPage = () => {
+interface FAQItem {
+  id: number;
+  question: string;
+  answer: string;
+}
+
+interface FAQPageProps {}
+
+const FAQPage: React.FC<FAQPageProps> = () => {
   // State to manage which FAQ item is currently open
-  const [openQuestion, setOpenQuestion] = useState(null);
+  // openQuestion can be a number (the id of the open question) or null (if no question is open)
+  const [openQuestion, setOpenQuestion] = useState<number | null>(null);
 
-  const faqs = [
+  const faqs: FAQItem[] = [ 
     {
       id: 1,
       question: "What is Etfinity?",
@@ -48,8 +59,8 @@ const FAQPage = () => {
     }
   ];
 
-  const toggleQuestion = (id) => {
-    setOpenQuestion(openQuestion === id ? null : id); // Open or close the clicked question
+  const toggleQuestion = (id: number) => { 
+    setOpenQuestion(openQuestion === id ? null : id);
   };
 
   return (
@@ -59,7 +70,7 @@ const FAQPage = () => {
       </h2>
 
       <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700">
-        {faqs.map(faq => (
+        {faqs.map((faq: FAQItem) => ( 
           <div key={faq.id} className="border-b border-zinc-700 last:border-b-0 py-4">
             <button
               onClick={() => toggleQuestion(faq.id)}

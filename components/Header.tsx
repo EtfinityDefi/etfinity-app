@@ -1,37 +1,39 @@
-import EtfinityGeometricLogo from './icons/EtfinityGeometricLogo';
-import React, { useState, useEffect } from 'react'; // Import useEffect for logging
-import { Wallet, Menu, X } from 'lucide-react';
+'use client';
 
-const Header = ({
-  isConnected,
-  walletAddress,
-  setCurrentPage,
-  setIsWalletModalOpen,
-  setIsConnected,
-  setWalletAddress,
-  setUserUsdcHoldings
-}) => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+import EtfinityGeometricLogo from './icons/EtfinityGeometricLogo';
+import React, { useState, useEffect } from 'react';
+import { Wallet, Menu, X } from 'lucide-react';
+import { useWallet } from '../app/providers/WalletProvider';
+import Link from 'next/link'; 
+
+interface HeaderProps {}
+
+const Header: React.FC<HeaderProps> = () => {
+  const {
+    isConnected,
+    walletAddress,
+    setIsWalletModalOpen,
+    disconnectWallet,
+  } = useWallet();
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   useEffect(() => {
   }, [isConnected, walletAddress]);
 
 
   const handleDisconnect = () => {
-    setIsConnected(false);
-    setWalletAddress(null);
-    setUserUsdcHoldings(0);
+    disconnectWallet();
     setIsMobileMenuOpen(false);
   };
 
-  const handleNavLinkClick = (page) => {
-    setCurrentPage(page);
+  const handleMobileMenuClick = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const truncateAddress = (address) => {
+  const truncateAddress = (address: string | null): string => {
     if (typeof address !== 'string' || !address) {
-      console.log("Header.js: truncateAddress returning empty string due to invalid address type or value.");
+      console.log("Header.tsx: truncateAddress returning empty string due to invalid address type or value.");
       return '';
     }
     if (address.length < 10) {
@@ -44,51 +46,48 @@ const Header = ({
     <header className="bg-zinc-800 p-4 shadow-md sticky top-0 z-10 border-b border-zinc-700">
       <div className="container mx-auto flex justify-between items-center">
         {/* Logo and Etfinity text */}
-        <div
+        {/* Use Link component for proper navigation to the home page */}
+        <Link
+          href="/" // Navigate to the root path
           className="flex items-center text-white text-2xl font-bold cursor-pointer"
-          onClick={() => handleNavLinkClick('home')}
+          onClick={handleMobileMenuClick} // Close mobile menu if clicked
         >
           <EtfinityGeometricLogo className="h-8 mr-2 fill-purple-400" />
           <span className="text-purple-400">etfinity</span>
-        </div>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex space-x-6">
-          <a
-            href="#dashboard"
-            onClick={() => handleNavLinkClick('dashboard')}
+          <Link
+            href="/dashboard"
             className="text-zinc-300 hover:text-white transition-colors duration-200"
           >
             Dashboard
-          </a>
-          <a
-            href="#liquidity"
-            onClick={() => handleNavLinkClick('liquidity')}
+          </Link>
+          <Link
+            href="/liquidity"
             className="text-zinc-300 hover:text-white transition-colors duration-200"
           >
             Liquidity
-          </a>
-          <a
-            href="#swap"
-            onClick={() => handleNavLinkClick('swap')}
+          </Link>
+          <Link
+            href="/swap"
             className="text-zinc-300 hover:text-white transition-colors duration-200"
           >
             Swap
-          </a>
-          <a
-            href="#faq"
-            onClick={() => handleNavLinkClick('faq')}
+          </Link>
+          <Link
+            href="/faq"
             className="text-zinc-300 hover:text-white transition-colors duration-200"
           >
             FAQ
-          </a>
-          <a
-            href="#about"
-            onClick={() => handleNavLinkClick('about')}
+          </Link>
+          <Link
+            href="/about"
             className="text-zinc-300 hover:text-white transition-colors duration-200"
           >
             About
-          </a>
+          </Link>
         </nav>
 
         {/* Wallet Connect Button & Mobile Menu Button */}
@@ -122,41 +121,41 @@ const Header = ({
 
       {isMobileMenuOpen && (
         <nav className="md:hidden bg-zinc-800 px-4 pt-2 pb-4 space-y-2 flex flex-col items-end border-t border-zinc-700">
-          <a
-            href="#dashboard"
-            onClick={() => handleNavLinkClick('dashboard')}
+          <Link
+            href="/dashboard"
+            onClick={handleMobileMenuClick} // Close mobile menu after clicking
             className="block text-zinc-300 hover:text-white transition-colors duration-200 py-1"
           >
             Dashboard
-          </a>
-          <a
-            href="#liquidity"
-            onClick={() => handleNavLinkClick('liquidity')}
+          </Link>
+          <Link
+            href="/liquidity"
+            onClick={handleMobileMenuClick}
             className="block text-zinc-300 hover:text-white transition-colors duration-200 py-1"
           >
             Liquidity
-          </a>
-          <a
-            href="#swap"
-            onClick={() => handleNavLinkClick('swap')}
+          </Link>
+          <Link
+            href="/swap"
+            onClick={handleMobileMenuClick}
             className="block text-zinc-300 hover:text-white transition-colors duration-200 py-1"
           >
             Swap
-          </a>
-          <a
-            href="#faq"
-            onClick={() => handleNavLinkClick('faq')}
+          </Link>
+          <Link
+            href="/faq"
+            onClick={handleMobileMenuClick}
             className="block text-zinc-300 hover:text-white transition-colors duration-200 py-1"
           >
             FAQ
-          </a>
-          <a
-            href="#about"
-            onClick={() => handleNavLinkClick('about')}
+          </Link>
+          <Link
+            href="/about"
+            onClick={handleMobileMenuClick}
             className="block text-zinc-300 hover:text-white transition-colors duration-200 py-1"
           >
             About
-          </a>
+          </Link>
         </nav>
       )}
     </header>

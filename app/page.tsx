@@ -1,18 +1,28 @@
+// app/page.tsx
+'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { DollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
+import { useWallet } from '../app/providers/WalletProvider';
+import { useRouter } from 'next/navigation';
 
-const HomePage = ({
-  isConnected,
-  userUsdcHoldings, 
-  setUserUsdcHoldings,
-  userSspyHoldings,
-  setUserSspyHoldings,
-  setRecentActivities,
-  sp500Price,
-  collateralizationRatio,
-  setIsWalletModalOpen,
-  setCurrentPage
-}) => {
+interface HomePageProps {}
+
+const HomePage: React.FC<HomePageProps> = () => {
+  const router = useRouter();
+
+  const {
+    isConnected,
+    userUsdcHoldings, // Get the actual persisted value
+    setUserUsdcHoldings,
+    userSspyHoldings,
+    setUserSspyHoldings,
+    setRecentActivities,
+    sp500Price,
+    collateralizationRatio,
+    setIsWalletModalOpen,
+  } = useWallet();
+
   const [activeTab, setActiveTab] = useState('mint');
   const [collateralAmount, setCollateralAmount] = useState('');
   const [selectedCollateral, setSelectedCollateral] = useState('USDC');
@@ -20,51 +30,40 @@ const HomePage = ({
   const [mintError, setMintError] = useState('');
   const [redeemError, setRedeemError] = useState('');
 
-  // Function to calculate sSPY amount based on collateral
-  const calculateSspy = useCallback((amount) => {
+  const currentSp500Price = sp500Price ?? 0;
+  const currentCollateralizationRatio = collateralizationRatio ?? 0;
+
+  const calculateSspy = useCallback((amount: string): string => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return '';
     }
-
-    const denominator = sp500Price * (collateralizationRatio / 100);
-
-    if (isNaN(denominator) || denominator === 0) {
-      return '0.0000';
-    }
-
+    const denominator = currentSp500Price * (currentCollateralizationRatio / 100);
+    if (isNaN(denominator) || denominator === 0) { return '0.0000'; }
     return (parsedAmount / denominator).toFixed(4);
-  }, [sp500Price, collateralizationRatio]); // Dependencies for useCallback
+  }, [currentSp500Price, currentCollateralizationRatio]);
 
-  // Function to calculate collateral amount based on sSPY
-  const calculateCollateral = useCallback((amount) => {
+  const calculateCollateral = useCallback((amount: string): string => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       return '';
     }
-
-    const product = parsedAmount * sp500Price * (collateralizationRatio / 100);
-
-    if (isNaN(product)) {
-      return '0.00';
-    }
-
+    const product = parsedAmount * currentSp500Price * (currentCollateralizationRatio / 100);
+    if (isNaN(product)) { return '0.00'; }
     return product.toFixed(2);
-  }, [sp500Price, collateralizationRatio]); // Dependencies for useCallback
+  }, [currentSp500Price, currentCollateralizationRatio]);
 
-  // Update sSPY amount when collateral amount changes (for mint tab)
   useEffect(() => {
     if (activeTab === 'mint') {
       setSspyAmount(calculateSspy(collateralAmount));
     }
-  }, [collateralAmount, activeTab, calculateSspy]); 
+  }, [collateralAmount, activeTab, calculateSspy]);
 
-  // Update collateral amount when sSPY amount changes (for redeem tab)
   useEffect(() => {
     if (activeTab === 'redeem') {
       setCollateralAmount(calculateCollateral(sspyAmount));
     }
-  }, [sspyAmount, activeTab, calculateCollateral]); 
+  }, [sspyAmount, activeTab, calculateCollateral]);
 
   const handleMint = () => {
     setMintError('');
@@ -77,12 +76,12 @@ const HomePage = ({
       setMintError("Please enter a valid collateral amount to mint.");
       return;
     }
-    if (collateralInput > userUsdcHoldings) {
+    if (collateralInput > userUsdcHoldings) { // Use actual userUsdcHoldings
       setMintError("You do not have enough USDC collateral.");
       return;
     }
 
-    const totalMintedAmount = parseFloat(calculateSspy(collateralInput));
+    const totalMintedAmount = parseFloat(calculateSspy(collateralInput.toString()));
     if (isNaN(totalMintedAmount) || totalMintedAmount <= 0) {
         setMintError("Could not calculate sSPY amount. Check inputs and market data.");
         return;
@@ -102,7 +101,7 @@ const HomePage = ({
 
     setCollateralAmount('');
     setSspyAmount('');
-    setCurrentPage('dashboard');
+    router.push('/dashboard');
   };
 
   const handleRedeem = () => {
@@ -122,14 +121,14 @@ const HomePage = ({
     }
 
     const redeemedAmount = sspyInput;
-    const receivedCollateral = parseFloat(calculateCollateral(sspyInput));
+    const receivedCollateral = parseFloat(calculateCollateral(sspyInput.toString()));
     if (isNaN(receivedCollateral) || receivedCollateral <= 0) {
         setRedeemError("Could not calculate collateral amount. Check inputs and market data.");
         return;
     }
 
     setUserSspyHoldings(prevHoldings => prevHoldings - redeemedAmount);
-    setUserUsdcHoldings(prevHoldings => prevHoldings + receivedCollateral);
+    setUserUsdcHoldings(prevHoldings => prevHoldings + receivedCollateral); // Use actual userUsdcHoldings
 
     const now = new Date();
     const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -143,8 +142,7 @@ const HomePage = ({
   };
 
   return (
-    <>
-      {/* Hero Section - This is now part of HomePage */}
+    <main>
       <section className="text-center py-16 px-6 md:py-24">
         <h2 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4 drop-shadow-md">
           Synthetic ETFs in Your wallet
@@ -164,10 +162,8 @@ const HomePage = ({
         )}
       </section>
 
-      {/* Main Content - Mint/Redeem Section */}
-      <main className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700">
-          {/* Tabs */}
           <div className="flex justify-center mb-6">
             <button
               onClick={() => { setActiveTab('mint'); setMintError(''); }}
@@ -191,7 +187,6 @@ const HomePage = ({
             </button>
           </div>
 
-          {/* Market Data */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-center">
             <div className="bg-zinc-700 p-4 rounded-xl shadow-inner flex flex-col items-center justify-center">
               <BarChart3 size={24} className="text-purple-400 mb-2" />
@@ -256,7 +251,7 @@ const HomePage = ({
               <button
                 onClick={handleMint}
                 disabled={!isConnected || !collateralAmount || parseFloat(collateralAmount || '0') <= 0 || parseFloat(collateralAmount || '0') > userUsdcHoldings}
-                title={!isConnected ? "Connect wallet" : ""} // ADDED TITLE FOR HOVER TEXT
+                title={!isConnected ? "Connect wallet" : ""}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg text-lg shadow-lg transform transition-all duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Mint sSPY
@@ -265,7 +260,7 @@ const HomePage = ({
                 <p className="text-red-400 text-sm mt-2 text-center">{mintError}</p>
               )}
               <p className="text-zinc-400 text-sm text-center">
-                Your USDC: ${userUsdcHoldings !== undefined && userUsdcHoldings !== null ? userUsdcHoldings.toFixed(2) : '0.00'}
+                Your USDC: ${isConnected ? (userUsdcHoldings ?? 0).toFixed(2) : (0).toFixed(2)}
               </p>
             </div>
           )}
@@ -311,7 +306,7 @@ const HomePage = ({
               <button
                 onClick={handleRedeem}
                 disabled={!isConnected || !sspyAmount || parseFloat(sspyAmount || '0') <= 0 || parseFloat(sspyAmount || '0') > userSspyHoldings}
-                title={!isConnected ? "Connect wallet" : ""} // ADDED TITLE FOR HOVER TEXT
+                title={!isConnected ? "Connect wallet" : ""}
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg text-lg shadow-lg transform transition-all duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Redeem sSPY
@@ -325,8 +320,8 @@ const HomePage = ({
             </div>
           )}
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   );
 };
 

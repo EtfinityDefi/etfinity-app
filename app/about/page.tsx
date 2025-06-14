@@ -1,22 +1,33 @@
+'use client';
+
 import React, { useState } from 'react';
 import { Mail, MessageSquare, Github, Linkedin, Disc, Send, X } from 'lucide-react';
-import TelegramIcon from '../components/icons/TelegramIcon.js';
+import TelegramIcon from '@/components/icons/TelegramIcon';
 
-const AboutPage = () => {
-  const [formData, setFormData] = useState({
+interface FormData {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+interface AboutPageProps {}
+
+const AboutPage: React.FC<AboutPageProps> = () => {
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     subject: '',
     message: ''
   });
-  const [formMessage, setFormMessage] = useState('');
+  const [formMessage, setFormMessage] = useState<string>(''); // Explicitly type as string
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setFormMessage(''); // Clear previous messages
 
@@ -118,7 +129,7 @@ const AboutPage = () => {
               <textarea
                 id="message"
                 name="message"
-                rows="4"
+                rows={4}
                 value={formData.message}
                 onChange={handleChange}
                 className="w-full p-2 bg-zinc-700 border border-zinc-600 rounded-md text-white placeholder-zinc-400 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y min-h-[80px] max-h-[200px]"
