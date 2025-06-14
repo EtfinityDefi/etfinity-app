@@ -4,10 +4,8 @@ import React from 'react';
 import { X, Wallet } from 'lucide-react';
 import { useWallet } from '../app/providers/WalletProvider'; 
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface WalletConnectModalProps {}
 
-const WalletConnectModal: React.FC<WalletConnectModalProps> = () => {
+const WalletConnectModal: React.FC = () => {
   const { isWalletModalOpen, setIsWalletModalOpen, connectWallet } = useWallet();
 
   // If the modal is not open, return null to render nothing

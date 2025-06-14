@@ -5,10 +5,7 @@ import { DollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
 import { useWallet } from '../app/providers/WalletProvider';
 import { useRouter } from 'next/navigation';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface HomePageProps {}
-
-const HomePage: React.FC<HomePageProps> = () => {
+const HomePage: React.FC = () => {
   const router = useRouter();
 
   const {

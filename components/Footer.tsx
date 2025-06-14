@@ -3,10 +3,7 @@
 import React from 'react';
 import Link from 'next/link'; 
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface FooterProps {}
-
-const Footer: React.FC<FooterProps> = () => {
+const Footer: React.FC = () => {
   return (
     <footer className="bg-zinc-900 text-zinc-400 py-6 text-center border-t border-zinc-800">
       <div className="container mx-auto px-4 flex flex-col sm:flex-row justify-between items-center text-sm">

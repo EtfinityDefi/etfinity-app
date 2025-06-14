@@ -2,10 +2,7 @@
 
 import React from 'react';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface PrivacyPolicyPageProps {}
-
-const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = () => {
+const PrivacyPolicyPage: React.FC<object> = () => {
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl text-white">
       <h2 className="text-4xl font-bold text-white mb-6 text-center drop-shadow-md">Privacy Policy</h2>
@@ -16,7 +13,7 @@ const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = () => {
         <h3 className="text-xl font-bold text-white mt-6 mb-2">Information We Collect</h3> 
         <p>We do not collect any personal identifying information from you while you use this demo application. This application is for demonstration purposes only and does not interact with real user data or wallets beyond the simulated connection within your browser.</p>
         <ul className="list-disc list-inside ml-4 space-y-1"> 
-          <li><strong className="text-purple-300">Simulated Wallet Address:</strong> When you "connect" a wallet, a dummy address is generated and stored locally in your browser's memory for the duration of your session. This is not real and is not transmitted to any server.</li>
+          <li><strong className="text-purple-300">Simulated Wallet Address:</strong> When you &quot;connect&quot; a wallet, a dummy address is generated and stored locally in your browser&apos;s memory for the duration of your session. This is not real and is not transmitted to any server.</li>
           <li><strong className="text-purple-300">Usage Data (Optional):</strong> We may collect anonymous, aggregated usage data (e.g., number of page views, button clicks) to understand how the demo is being interacted with. This data does not identify you personally.</li>
         </ul>
 

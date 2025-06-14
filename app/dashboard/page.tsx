@@ -10,10 +10,7 @@ interface Activity {
   time: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface DashboardPageProps {}
-
-const DashboardPage: React.FC<DashboardPageProps> = () => {
+const DashboardPage: React.FC = () => {
   const {
     sp500Price,
     collateralizationRatio,

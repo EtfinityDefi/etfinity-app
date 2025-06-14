@@ -4,10 +4,7 @@ import React, { useState } from 'react';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { useWallet } from '@/app/providers/WalletProvider';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface LiquidityPageProps {}
-
-const LiquidityPage: React.FC<LiquidityPageProps> = () => {
+const LiquidityPage: React.FC = () => {
   const {
     sp500Price,
     isConnected,

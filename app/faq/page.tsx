@@ -9,10 +9,7 @@ interface FAQItem {
   answer: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface FAQPageProps {}
-
-const FAQPage: React.FC<FAQPageProps> = () => {
+const FAQPage: React.FC = () => {
   // State to manage which FAQ item is currently open
   // openQuestion can be a number (the id of the open question) or null (if no question is open)
   const [openQuestion, setOpenQuestion] = useState<number | null>(null);

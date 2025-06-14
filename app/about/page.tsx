@@ -11,8 +11,7 @@ interface FormData {
   message: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface AboutPageProps {}
+type AboutPageProps = object;
 
 const AboutPage: React.FC<AboutPageProps> = () => {
   const [formData, setFormData] = useState<FormData>({
