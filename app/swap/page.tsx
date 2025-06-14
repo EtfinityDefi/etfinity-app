@@ -1,10 +1,9 @@
 'use client'; 
 import React from 'react';
+import Image from 'next/image';
 import { Repeat2 } from 'lucide-react';
 
-interface SwapPageProps {}
-
-const SwapPage: React.FC<SwapPageProps> = () => {
+const SwapPage: React.FC = () => {
   // Placeholder for your actual sSPY contract address.
   // IMPORTANT: Replace '0xYourActualSspyContractAddressHere' with the real address
   // when deploying or using this application with live data.
@@ -50,8 +49,14 @@ const SwapPage: React.FC<SwapPageProps> = () => {
           onClick={handleGoToUniswap}
           className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-75 flex items-center justify-center mx-auto"
         >
-          {/* Uniswap logo for branding */}
-          <img src="https://assets.coingecko.com/coins/images/279/small/uniswap.png?1696515865" alt="Uniswap Logo" className="w-6 h-6 mr-3" />
+          <Image
+            src="https://assets.coingecko.com/coins/images/279/small/uniswap.png?1696515865"
+            alt="Uniswap Logo"
+            width={24}
+            height={24}
+            className="w-6 h-6 mr-3"
+            unoptimized
+          />
           Go to Uniswap to Swap
         </button>
       </div>

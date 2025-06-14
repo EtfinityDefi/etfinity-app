@@ -2,12 +2,7 @@
 
 import React from 'react';
 
-// Define the interface for the props that EtfinityGeometricLogo expects.
-// It extends React.SVGProps<SVGSVGElement> to accept all standard SVG attributes,
-// like 'className', 'width', 'height', 'viewBox', etc.
-interface EtfinityGeometricLogoProps extends React.SVGProps<SVGSVGElement> {}
-
-const EtfinityGeometricLogo: React.FC<EtfinityGeometricLogoProps> = ({
+const EtfinityGeometricLogo: React.FC<React.SVGProps<SVGSVGElement>> = ({
   className, // Destructure className to apply it to the root SVG element
   ...props   // Capture any other standard SVG props to pass to the root <svg>
 }) => (
