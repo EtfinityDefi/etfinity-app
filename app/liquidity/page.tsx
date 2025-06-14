@@ -1,15 +1,10 @@
-// app/liquidity/page.tsx
 'use client';
 
 import React, { useState } from 'react';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 import { useWallet } from '@/app/providers/WalletProvider';
 
-interface Activity {
-  description: string;
-  time: string;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface LiquidityPageProps {}
 
 const LiquidityPage: React.FC<LiquidityPageProps> = () => {

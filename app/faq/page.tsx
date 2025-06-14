@@ -9,6 +9,7 @@ interface FAQItem {
   answer: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface FAQPageProps {}
 
 const FAQPage: React.FC<FAQPageProps> = () => {

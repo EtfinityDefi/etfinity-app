@@ -2,6 +2,7 @@
 
 import React from 'react';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface PrivacyPolicyPageProps {}
 
 const PrivacyPolicyPage: React.FC<PrivacyPolicyPageProps> = () => {

@@ -1,4 +1,3 @@
-// app/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -6,6 +5,7 @@ import { DollarSign, ArrowRightLeft, BarChart3 } from 'lucide-react';
 import { useWallet } from '../app/providers/WalletProvider';
 import { useRouter } from 'next/navigation';
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface HomePageProps {}
 
 const HomePage: React.FC<HomePageProps> = () => {
@@ -13,7 +13,7 @@ const HomePage: React.FC<HomePageProps> = () => {
 
   const {
     isConnected,
-    userUsdcHoldings, // Get the actual persisted value
+    userUsdcHoldings, 
     setUserUsdcHoldings,
     userSspyHoldings,
     setUserSspyHoldings,

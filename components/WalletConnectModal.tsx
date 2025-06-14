@@ -4,6 +4,7 @@ import React from 'react';
 import { X, Wallet } from 'lucide-react';
 import { useWallet } from '../app/providers/WalletProvider'; 
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface WalletConnectModalProps {}
 
 const WalletConnectModal: React.FC<WalletConnectModalProps> = () => {

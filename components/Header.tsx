@@ -6,6 +6,7 @@ import { Wallet, Menu, X } from 'lucide-react';
 import { useWallet } from '../app/providers/WalletProvider';
 import Link from 'next/link'; 
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface HeaderProps {}
 
 const Header: React.FC<HeaderProps> = () => {

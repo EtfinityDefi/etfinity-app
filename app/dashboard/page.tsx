@@ -1,4 +1,3 @@
-// app/dashboard/page.tsx
 'use client';
 
 import React from 'react';
@@ -11,6 +10,7 @@ interface Activity {
   time: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface DashboardPageProps {}
 
 const DashboardPage: React.FC<DashboardPageProps> = () => {
@@ -18,7 +18,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     sp500Price,
     collateralizationRatio,
     userSspyHoldings,
-    userUsdcHoldings, // Still available, but not directly used in 'userCollateralValue'
     recentActivities,
     userLpHoldingsValue,
     isConnected
@@ -27,8 +26,6 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
   const currentSp500Price = sp500Price ?? 0;
   const currentCollateralizationRatio = collateralizationRatio ?? 0;
 
-  // REDEFINITION: userCollateralValue now represents ONLY the USDC value of sSPY holdings.
-  // It no longer includes the liquid userUsdcHoldings.
   const userCollateralValue = (userSspyHoldings * currentSp500Price * (currentCollateralizationRatio / 100));
 
   const sp500ChartData: { name: string; price: number }[] = [
@@ -38,10 +35,7 @@ const DashboardPage: React.FC<DashboardPageProps> = () => {
     { name: 'Oct', price: 5350 }, { name: 'Nov', price: 5400 }, { name: 'Dec', price: 5500 },
   ];
 
-  // The condition for showing 0 on initial connect no longer needs 'userUsdcHoldings'
-  // because userCollateralValue itself will be 0 if userSspyHoldings is 0.
   const isInitialConnectedState = isConnected && userSspyHoldings === 0;
-
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-5xl">

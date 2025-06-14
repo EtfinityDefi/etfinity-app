@@ -1,4 +1,3 @@
-// app/providers/WalletProvider.tsx
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
@@ -31,8 +30,11 @@ interface Activity {
 const WalletContext = createContext<WalletContextType | null>(null);
 
 export const WalletProvider = ({ children }: { children: ReactNode }) => {
-  // --- State Initialization with LocalStorage Read ---
-  const [isConnected, setIsConnected] = useState<boolean>(false); // isConnected always starts as false
+  // --- State Initialization ---
+  // isConnected: ALWAYS starts as false, NOT loaded from localStorage.
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+
+  // walletAddress: still loads from localStorage for convenience (last connected address)
   const [walletAddress, setWalletAddress] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('walletAddress');
@@ -42,10 +44,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState<boolean>(false);
 
   // Market data
-  const [sp500Price, setSp500Price] = useState<number | null>(5000);
-  const [collateralizationRatio, setCollateralizationRatio] = useState<number | null>(150);
+  const [sp500Price] = useState<number | null>(5000);
+  const [collateralizationRatio] = useState<number | null>(150);
 
   // User holdings state, initialized from localStorage or with default values
+  // All holdings (sSPY, USDC, LP) persist.
   const [userSspyHoldings, setUserSspyHoldings] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('userSspyHoldings');
@@ -69,8 +72,6 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     }
     return 0;
   });
-
-  // recentActivities: Now also loads from localStorage, and will NOT be cleared on disconnect.
   const [recentActivities, setRecentActivities] = useState<Activity[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('recentActivities');
@@ -84,7 +85,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     return [];
   });
 
-  // --- useEffect to Save All Persistent State to LocalStorage ---
+  // --- useEffect to Save Persistent State to LocalStorage ---
+  // isConnected is explicitly NOT saved here.
   useEffect(() => {
     if (typeof window === 'undefined') {
       return;
@@ -93,8 +95,8 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('userSspyHoldings', userSspyHoldings.toString());
       localStorage.setItem('userUsdcHoldings', userUsdcHoldings.toString());
       localStorage.setItem('userLpHoldingsValue', userLpHoldingsValue.toString());
-      localStorage.setItem('recentActivities', JSON.stringify(recentActivities)); // Recent activities is saved
-      localStorage.setItem('isConnected', isConnected.toString()); // isConnected is explicitly NOT saved (it's in the useEffect below now)
+      localStorage.setItem('recentActivities', JSON.stringify(recentActivities));
+      // localStorage.setItem('isConnected', isConnected.toString()); <-- REMOVED THIS LINE
 
       if (walletAddress) {
         localStorage.setItem('walletAddress', walletAddress);
@@ -104,11 +106,11 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Failed to save state to localStorage:", error);
     }
-  }, [userSspyHoldings, userUsdcHoldings, userLpHoldingsValue, recentActivities, isConnected, walletAddress]);
+  }, [userSspyHoldings, userUsdcHoldings, userLpHoldingsValue, recentActivities, walletAddress]); // Removed isConnected from dependencies
 
   // --- Wallet Connection / Disconnection Logic ---
   const connectWallet = (addressFromModal?: string) => {
-    setIsConnected(true);
+    setIsConnected(true); // Now only becomes true when clicked
     const finalAddress = typeof addressFromModal === 'string' && addressFromModal.length > 0
                              ? addressFromModal
                              : "0xAbc1234567890defabcDEF1234567890aBcdE";
@@ -117,10 +119,9 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const disconnectWallet = () => {
-    setIsConnected(false);
+    setIsConnected(false); // Now explicitly set to false on disconnect
     setWalletAddress(null);
-    // IMPORTANT: recentActivities is NO LONGER cleared here.
-    // It will persist via localStorage just like the holdings.
+    setRecentActivities([]);
   };
 
   // --- Context Value Provider ---
