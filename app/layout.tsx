@@ -1,34 +1,30 @@
-import React from 'react';
+// NO 'use client' directive here - this is a Server Component
 import './globals.css';
-import Header from '../components/Header';
+import { Inter } from 'next/font/google';
+import Providers from '../components/Providers'; 
 import Footer from '../components/Footer';
-import WalletConnectModal from '../components/WalletConnectModal';
-import { WalletProvider } from './providers/WalletProvider';
 
-interface RootLayoutProps {
+const inter = Inter({ subsets: ['latin'] });
+
+export const metadata = {
+  title: 'Etfinity Protocol',
+  description: 'Decentralized Synthetic ETFs',
+};
+
+export default function RootLayout({
+  children,
+}: {
   children: React.ReactNode;
-}
-
-export default function RootLayout({ children }: RootLayoutProps) {
+}) {
   return (
     <html lang="en">
-      <body>
-        {/* Demo Mode Banner */}
-        <div className="w-full bg-red-600 text-white text-center py-2 text-sm font-semibold">
-          This is a DEMO application. No real funds are used.
-        </div>
-
-        {/* WalletProvider wraps the entire application to provide global state */}
-        <WalletProvider>
-          <div className="min-h-screen bg-zinc-900 flex flex-col">
-            <Header /> {/* Header now consumes state from WalletProvider */}
-            <main className="flex-grow">
-              {children} {/* This renders the current page, which now consumes state from WalletProvider */}
-            </main>
-            <Footer /> {/* Footer now consumes state from WalletProvider */}
-            <WalletConnectModal /> {/* WalletConnectModal now consumes state from WalletProvider */}
-          </div>
-        </WalletProvider>
+      <body className={`${inter.className} bg-zinc-900 text-white min-h-screen flex flex-col`}>
+        <Providers>
+          {/* GlobalHeader is rendered inside Providers, and handles its own fixed positioning */}
+          {/* The children prop passed to Providers will be the main content of each page */}
+          {children}
+        </Providers>
+        <Footer /> {/* Render Footer component here at the bottom */}
       </body>
     </html>
   );

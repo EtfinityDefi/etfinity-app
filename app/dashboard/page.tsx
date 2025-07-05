@@ -1,38 +1,100 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { DollarSign, TrendingUp, Landmark, PiggyBank } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
-import { useWallet } from '../providers/WalletProvider';
 
-interface Activity {
-  description: string;
-  time: string;
-}
+// Import Wagmi hooks
+import { useAccount, useReadContract } from 'wagmi';
+import { formatUnits } from 'viem';
+
+// Import ABIs
+import { erc20Abi } from '../../contracts/abi/Erc20Abi';
+import { chainlinkAggregatorV3Abi } from '../../contracts/abi/ChainlinkAggregatorV3Abi';
+import { etfinityProtocolAbi } from '../../contracts/abi/EtfinityProtocolAbi';
+
+// Use Environment Variables for Contract Addresses ---
+const SSPY_CONTRACT_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_SSPY_CONTRACT_ADDRESS as `0x${string}`;
+const CHAINLINK_SP500_PRICE_FEED_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`;
+const ETFINITY_PROTOCOL_CONTRACT_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`;
+
+const SSPY_DECIMALS = 18;
+const CHAINLINK_PRICE_FEED_DECIMALS = 8;
+
+const sp500ChartData: { name: string; price: number }[] = [
+  { name: 'Jan', price: 4700 }, { name: 'Feb', price: 4850 }, { name: 'Mar', price: 4900 },
+  { name: 'Apr', price: 5050 }, { name: 'May', price: 5150 }, { name: 'Jun', price: 5200 },
+  { name: 'Jul', price: 5180 }, { name: 'Aug', price: 5300 }, { name: 'Sep', price: 5250 },
+  { name: 'Oct', price: 5350 }, { name: 'Nov', price: 5400 }, { name: 'Dec', price: 5500 },
+];
 
 const DashboardPage: React.FC = () => {
-  const {
-    sp500Price,
-    collateralizationRatio,
-    userSspyHoldings,
-    recentActivities,
-    userLpHoldingsValue,
-    isConnected
-  } = useWallet();
+  const { address, isConnected } = useAccount();
 
-  const currentSp500Price = sp500Price ?? 0;
-  const currentCollateralizationRatio = collateralizationRatio ?? 0;
+  // --- Fetch S&P 500 Price from Chainlink ---
+  const { data: sp500PriceData, isLoading: isLoadingSp500Price, error: sp500PriceError } = useReadContract({
+    address: CHAINLINK_SP500_PRICE_FEED_ADDRESS,
+    abi: chainlinkAggregatorV3Abi,
+    functionName: 'latestRoundData',
+    args: [],
+    query: {
+      refetchInterval: 10000,
+    },
+  });
+  const sp500PriceRaw = sp500PriceData ? (sp500PriceData[1] as bigint) : 0n;
+  const currentSp500Price = sp500PriceRaw ? parseFloat(formatUnits(sp500PriceRaw, CHAINLINK_PRICE_FEED_DECIMALS)) : 0;
 
-  const userCollateralValue = (userSspyHoldings * currentSp500Price * (currentCollateralizationRatio / 100));
+  useEffect(() => {
+    console.log("--- Dashboard S&P 500 Price Debug ---");
+    console.log("CHAINLINK_SP500_PRICE_FEED_ADDRESS:", CHAINLINK_SP500_PRICE_FEED_ADDRESS);
+    console.log("sp500PriceData (raw):", sp500PriceData);
+    console.log("sp500PriceRaw (BigInt):", sp500PriceRaw);
+    console.log("currentSp500Price (formatted):", currentSp500Price);
+    console.log("isLoadingSp500Price:", isLoadingSp500Price);
+    console.log("sp500PriceError:", sp500PriceError);
+    console.log("-----------------------------------");
+  }, [sp500PriceData, sp500PriceRaw, currentSp500Price, isLoadingSp500Price, sp500PriceError]);
 
-  const sp500ChartData: { name: string; price: number }[] = [
-    { name: 'Jan', price: 4700 }, { name: 'Feb', price: 4850 }, { name: 'Mar', price: 4900 },
-    { name: 'Apr', price: 5050 }, { name: 'May', price: 5150 }, { name: 'Jun', price: 5200 },
-    { name: 'Jul', price: 5180 }, { name: 'Aug', price: 5300 }, { name: 'Sep', price: 5250 },
-    { name: 'Oct', price: 5350 }, { name: 'Nov', price: 5400 }, { name: 'Dec', price: 5500 },
-  ];
 
-  const isInitialConnectedState = isConnected && userSspyHoldings === 0;
+  // --- Fetch Collateralization Ratio from Protocol Contract ---
+  const { data: collateralizationRatioRaw, isLoading: isLoadingCollateralRatio, error: collateralRatioError } = useReadContract({
+    address: ETFINITY_PROTOCOL_CONTRACT_ADDRESS,
+    abi: etfinityProtocolAbi,
+    functionName: 'TARGET_COLLATERALIZATION_RATIO',
+    args: [],
+    query: {
+      refetchInterval: 10000,
+    },
+  });
+  
+  const currentCollateralizationRatio = collateralizationRatioRaw ? Number(collateralizationRatioRaw) / 100 : 0;
+
+  useEffect(() => {
+    console.log("--- Dashboard Collateral Ratio Debug ---");
+    console.log("ETFINITY_PROTOCOL_CONTRACT_ADDRESS:", ETFINITY_PROTOCOL_CONTRACT_ADDRESS);
+    console.log("collateralizationRatioRaw (raw):", collateralizationRatioRaw);
+    console.log("currentCollateralizationRatio (formatted):", currentCollateralizationRatio);
+    console.log("isLoadingCollateralRatio:", isLoadingCollateralRatio);
+    console.log("collateralRatioError:", collateralRatioError);
+    console.log("-----------------------------------");
+  }, [collateralizationRatioRaw, currentCollateralizationRatio, isLoadingCollateralRatio, collateralRatioError]);
+
+
+  // --- Fetch User sSPY Holdings ---
+  const { data: userSspyBalanceRaw, isLoading: isLoadingSspyBalance } = useReadContract({
+    address: SSPY_CONTRACT_ADDRESS,
+    abi: erc20Abi,
+    functionName: 'balanceOf',
+    args: [address as `0x${string}`],
+    query: {
+      enabled: isConnected && !!address,
+      refetchInterval: 5000,
+    },
+  });
+  const userSspyHoldings = userSspyBalanceRaw ? parseFloat(formatUnits(userSspyBalanceRaw, SSPY_DECIMALS)) : 0;
+
+  const userCollateralValue = (userSspyHoldings * currentSp500Price * (currentCollateralizationRatio / 100)); // Still divide by 100 here for calculation
+  const userLpHoldingsValue = 0; 
 
   return (
     <main className="container mx-auto px-4 py-8 max-w-5xl">
@@ -42,28 +104,31 @@ const DashboardPage: React.FC = () => {
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <TrendingUp size={36} className="text-purple-400 mb-3" />
           <p className="text-zinc-300 text-sm">Your sSPY Holdings</p>
-          <p className="text-3xl font-bold text-white">{isConnected ? (userSspyHoldings ?? 0).toFixed(4) : (0).toFixed(4)} sSPY</p>
+          <p className="text-3xl font-bold text-white">
+            {isConnected && !isLoadingSspyBalance ? `${userSspyHoldings.toFixed(4)} sSPY` : 'Connect Wallet'}
+          </p>
         </div>
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <DollarSign size={36} className="text-green-400 mb-3" />
           <p className="text-zinc-300 text-sm">Total Collateral Value</p>
           <p className="text-3xl font-bold text-white">
-            {/* Conditional display for Total Collateral Value */}
-            ${(!isConnected || isInitialConnectedState)
-              ? (0).toFixed(2) // Show 0 if disconnected OR in the initial connected state
-              : (userCollateralValue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            {isConnected && !isLoadingSspyBalance && !isLoadingSp500Price && !isLoadingCollateralRatio
+              ? `$${userCollateralValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : 'Connect Wallet'}
           </p>
         </div>
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <Landmark size={36} className="text-blue-400 mb-3" />
           <p className="text-zinc-300 text-sm">Target Collateral Ratio</p>
-          <p className="text-3xl font-bold text-white">{currentCollateralizationRatio}%</p>
+          <p className="text-3xl font-bold text-white">
+            {isLoadingCollateralRatio ? 'Loading...' : `${currentCollateralizationRatio}%`}
+          </p>
         </div>
         <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700 flex flex-col items-center justify-center text-center">
           <PiggyBank size={36} className="text-yellow-400 mb-3" />
           <p className="text-zinc-300 text-sm">Your LP Value</p>
           <p className="text-3xl font-bold text-white">
-            ${isConnected ? (userLpHoldingsValue ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : (0).toFixed(2)}
+            ${userLpHoldingsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
         </div>
       </div>
@@ -88,23 +153,6 @@ const DashboardPage: React.FC = () => {
         </ResponsiveContainer>
       </div>
 
-      {isConnected && (
-        <div className="bg-zinc-800 p-6 rounded-2xl shadow-xl border border-zinc-700">
-          <h3 className="text-2xl font-bold text-white mb-4">Recent Activity</h3>
-          {recentActivities.length > 0 ? (
-            <ul className="space-y-3 text-zinc-300">
-              {recentActivities.map((activity: Activity, index: number) => (
-                <li key={index} className="flex justify-between items-center bg-zinc-700 p-3 rounded-lg">
-                  <span>{activity.description}</span>
-                  <span className="text-zinc-400 text-sm">{activity.time}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-zinc-400 text-center">No recent activity yet.</p>
-          )}
-        </div>
-      )}
     </main>
   );
 };
