@@ -61,7 +61,7 @@ export default function Providers({ children }: ProvidersProps) {
     <DynamicWalletConnectWrapper>
       <div className="relative min-h-screen">
         <div ref={bannerRef} className="fixed top-0 left-0 w-full bg-red-700 text-white text-center py-2 z-50 text-sm">
-          This is a DEMO application connected to Ethereum testnet.
+          This is a DEMO application. Connected to Ethereum test networks (Sepolia & Arbitrum Sepolia) only.
         </div>
 
         <div
