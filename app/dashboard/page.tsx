@@ -41,7 +41,7 @@ const DashboardPage: React.FC = () => {
       refetchInterval: 10000,
     },
   });
-  const sp500PriceRaw = sp500PriceData ? (sp500PriceData[1] as bigint) : 0n;
+  const sp500PriceRaw = sp500PriceData ? (sp500PriceData[1] as bigint) : BigInt(0);
   const currentSp500Price = sp500PriceRaw ? parseFloat(formatUnits(sp500PriceRaw, CHAINLINK_PRICE_FEED_DECIMALS)) : 0;
 
   useEffect(() => {
