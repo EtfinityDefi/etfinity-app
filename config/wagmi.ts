@@ -4,7 +4,7 @@ import { injected, metaMask, walletConnect, coinbaseWallet } from 'wagmi/connect
 
 // Get project ID from WalletConnect Cloud (https://cloud.walletconnect.com)
 // It's crucial for WalletConnect connector.
-export const projectId = process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID;
+export const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 
 // Define a fallback projectId or handle its absence
 // if (!projectId) throw new Error('WalletConnect project ID is not defined');
