@@ -14,7 +14,7 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-zinc-800 p-4 shadow-md sticky top-0 z-10 border-b border-zinc-700">
+    <header className="bg-zinc-800 p-4 shadow-md border-b border-zinc-700 w-full">
       <div className="container mx-auto flex justify-between items-center">
         {/* Logo and Etfinity text */}
         <Link
