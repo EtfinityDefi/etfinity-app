@@ -3,30 +3,49 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
-// Import Wagmi hooks (keep only what's needed for contract interaction, not for connection UI)
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { parseUnits, formatUnits, maxUint256 } from 'viem';
 
-// Import ABIs - CORRECTED PATHS
+// Import ABIs
 import { erc20Abi } from '../../contracts/abi/Erc20Abi';
 import { chainlinkAggregatorV3Abi } from '../../contracts/abi/ChainlinkAggregatorV3Abi';
 import { etfinityProtocolAbi } from '../../contracts/abi/EtfinityProtocolAbi';
 
-// Use Environment Variables for Contract Addresses ---
-const USDC_CONTRACT_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_USDC_CONTRACT_ADDRESS as `0x${string}`;
-const SSPY_CONTRACT_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_SSPY_CONTRACT_ADDRESS as `0x${string}`;
-const CHAINLINK_SP500_PRICE_FEED_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`;
-const ETFINITY_PROTOCOL_CONTRACT_ADDRESS: `0x${string}` = process.env.NEXT_PUBLIC_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`;
+/**
+ * @dev Defines all contract addresses per network.
+ * These values are loaded from environment variables (e.g., .env.local).
+ */
+const CONTRACT_ADDRESSES: Record<number, {
+  USDC: `0x${string}`;
+  SSPY: `0x${string}`;
+  CHAINLINK_SP500_PRICE_FEED: `0x${string}`;
+  ETFINITY_PROTOCOL: `0x${string}`;
+}> = {
+  // Arbitrum Sepolia Addresses (Chain ID: 421614)
+  421614: {
+    USDC: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_USDC_CONTRACT_ADDRESS as `0x${string}`,
+    SSPY: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_SSPY_CONTRACT_ADDRESS as `0x${string}`,
+    CHAINLINK_SP500_PRICE_FEED: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`,
+    ETFINITY_PROTOCOL: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`,
+  },
+  // Sepolia Addresses (Chain ID: 11155111)
+  11155111: {
+    USDC: process.env.NEXT_PUBLIC_SEPOLIA_USDC_CONTRACT_ADDRESS as `0x${string}`,
+    SSPY: process.env.NEXT_PUBLIC_SEPOLIA_SSPY_CONTRACT_ADDRESS as `0x${string}`,
+    CHAINLINK_SP500_PRICE_FEED: process.env.NEXT_PUBLIC_SEPOLIA_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`,
+    ETFINITY_PROTOCOL: process.env.NEXT_PUBLIC_SEPOLIA_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`,
+  },
+};
 
-// --- Decimals (Verify these against your actual contracts) ---
+// Define token and price feed decimals
 const USDC_DECIMALS = 6;
 const SSPY_DECIMALS = 18;
 const CHAINLINK_PRICE_FEED_DECIMALS = 8;
 
 const LiquidityPage: React.FC = () => {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, chain } = useAccount();
 
-  // --- UI State ---
+  // UI State
   const [sspyAmountToAdd, setSspyAmountToAdd] = useState<string>('');
   const [usdcAmountToAdd, setUsdcAmountToAdd] = useState<string>('');
   const [removeLpAmount, setRemoveLpAmount] = useState<string>('');
@@ -34,24 +53,45 @@ const LiquidityPage: React.FC = () => {
   const [removeLpError, setRemoveLpError] = useState<string>('');
   const [transactionStatus, setTransactionStatus] = useState<{ message: string, type: 'info' | 'success' | 'error' | null, hash?: `0x${string}` } | null>(null);
 
-  // --- State for chaining transactions ---
+  // State for chaining transactions (approvals before adding liquidity)
   const [pendingUsdcApprovalForLp, setPendingUsdcApprovalForLp] = useState(false);
   const [pendingSspyApprovalForLp, setPendingSspyApprovalForLp] = useState(false);
   const storedLpAmounts = useRef<{ sspy: bigint, usdc: bigint }>({ sspy: BigInt(0), usdc: BigInt(0) });
 
-  // --- Local State for LP Holdings Value (as no on-chain LP token was explicitly defined) ---
+  // Local State for LP Holdings Value (simulated for display)
   const [userLpHoldingsValue, setUserLpHoldingsValue] = useState<number>(0);
 
+  // Dynamically select contract addresses based on connected chain
+  const currentChainId = chain?.id;
+  const currentContracts = currentChainId ? CONTRACT_ADDRESSES[currentChainId] : undefined;
 
-  // --- READ CONTRACT DATA WITH WAGMI ---
+  // Flag to enable/disable contract interactions
+  const contractsLoaded = !!currentContracts;
+
+  // Provide a warning/error if contracts for the current chain are not found
+  useEffect(() => {
+    if (isConnected && !currentContracts) {
+      console.warn(`No contract addresses defined for chain ID: ${currentChainId}. Please connect to a supported testnet (Sepolia or Arbitrum Sepolia).`);
+      setAddLpError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
+      setRemoveLpError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
+    } else if (!isConnected) {
+      // Clear errors if disconnected
+      setAddLpError("");
+      setRemoveLpError("");
+    }
+  }, [currentChainId, isConnected, currentContracts]);
+
+
+  // --- READ CONTRACT DATA ---
 
   // 1. Read S&P 500 Price from Chainlink
   const { data: sp500PriceData } = useReadContract({
-    address: CHAINLINK_SP500_PRICE_FEED_ADDRESS,
+    address: currentContracts?.CHAINLINK_SP500_PRICE_FEED,
     abi: chainlinkAggregatorV3Abi,
     functionName: 'latestRoundData',
     args: [],
     query: {
+      enabled: contractsLoaded,
       refetchInterval: 10000,
     },
   });
@@ -60,12 +100,12 @@ const LiquidityPage: React.FC = () => {
 
   // 2. Read User USDC Balance
   const { data: userUsdcBalanceRaw, isLoading: isLoadingUsdcBalance, refetch: refetchUsdcBalance } = useReadContract({
-    address: USDC_CONTRACT_ADDRESS,
+    address: currentContracts?.USDC,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [address as `0x${string}`],
     query: {
-      enabled: isConnected && !!address,
+      enabled: isConnected && !!address && contractsLoaded,
       refetchInterval: 5000,
     },
   });
@@ -73,12 +113,12 @@ const LiquidityPage: React.FC = () => {
 
   // 3. Read User sSPY Balance
   const { data: userSspyBalanceRaw, isLoading: isLoadingSspyBalance, refetch: refetchSspyBalance } = useReadContract({
-    address: SSPY_CONTRACT_ADDRESS,
+    address: currentContracts?.SSPY,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [address as `0x${string}`],
     query: {
-      enabled: isConnected && !!address,
+      enabled: isConnected && !!address && contractsLoaded,
       refetchInterval: 5000,
     },
   });
@@ -86,12 +126,12 @@ const LiquidityPage: React.FC = () => {
 
   // 4. Read USDC Allowance for Protocol Contract
   const { data: usdcAllowanceRaw, isLoading: isLoadingUsdcAllowance, refetch: refetchUsdcAllowance } = useReadContract({
-    address: USDC_CONTRACT_ADDRESS,
+    address: currentContracts?.USDC,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [address as `0x${string}`, ETFINITY_PROTOCOL_CONTRACT_ADDRESS],
+    args: [address as `0x${string}`, currentContracts?.ETFINITY_PROTOCOL as `0x${string}`],
     query: {
-      enabled: isConnected && !!address,
+      enabled: isConnected && !!address && contractsLoaded,
       refetchInterval: 5000,
     },
   });
@@ -99,12 +139,12 @@ const LiquidityPage: React.FC = () => {
 
   // 5. Read sSPY Allowance for Protocol Contract
   const { data: sspyAllowanceRaw, isLoading: isLoadingSspyAllowance, refetch: refetchSspyAllowance } = useReadContract({
-    address: SSPY_CONTRACT_ADDRESS,
+    address: currentContracts?.SSPY,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: [address as `0x${string}`, ETFINITY_PROTOCOL_CONTRACT_ADDRESS],
+    args: [address as `0x${string}`, currentContracts?.ETFINITY_PROTOCOL as `0x${string}`],
     query: {
-      enabled: isConnected && !!address,
+      enabled: isConnected && !!address && contractsLoaded,
       refetchInterval: 5000,
     },
   });
@@ -206,10 +246,6 @@ const LiquidityPage: React.FC = () => {
 
   // --- Transaction Status Management & Chaining ---
   useEffect(() => {
-    console.log("Transaction Status State Changed (LP):", transactionStatus);
-  }, [transactionStatus]);
-
-  useEffect(() => {
     if (isUsdcApprovePending || isSspyApprovePending || isAddLpPending || isRemoveLpPending) {
       setTransactionStatus({ message: 'Waiting for wallet confirmation...', type: 'info' });
     }
@@ -234,34 +270,43 @@ const LiquidityPage: React.FC = () => {
         if (sspy > sspyAllowance) {
           setPendingSspyApprovalForLp(true);
           setTransactionStatus({ message: 'USDC approved. Now approving sSPY for liquidity pool (check wallet)...', type: 'info' });
+          if (!currentContracts?.SSPY) {
+            setAddLpError("sSPY contract address is not defined for the current network.");
+            setPendingSspyApprovalForLp(false);
+            return;
+          }
           writeSspyApprove({
-            address: SSPY_CONTRACT_ADDRESS,
+            address: currentContracts.SSPY,
             abi: erc20Abi,
             functionName: 'approve',
-            args: [ETFINITY_PROTOCOL_CONTRACT_ADDRESS, maxUint256],
+            args: [currentContracts.ETFINITY_PROTOCOL as `0x${string}`, maxUint256],
           });
         } else {
           setTransactionStatus({ message: 'USDC approved. Proceeding to add liquidity (check wallet)...', type: 'info' });
+          if (!currentContracts?.ETFINITY_PROTOCOL) {
+              setAddLpError("ETFINITY_PROTOCOL contract address is not defined for the current network.");
+              return;
+          }
           writeAddLiquidity({
-            address: ETFINITY_PROTOCOL_CONTRACT_ADDRESS,
-            abi: etfinityProtocolAbi,
-            functionName: 'addLiquidity',
-            args: [storedLpAmounts.current.sspy, storedLpAmounts.current.usdc],
+              address: currentContracts.ETFINITY_PROTOCOL,
+              abi: etfinityProtocolAbi,
+              functionName: 'addLiquidity',
+              args: [storedLpAmounts.current.sspy, storedLpAmounts.current.usdc],
           });
         }
       }
     }
     if (isUsdcApproveError) {
-      console.error("USDC Approve Error (Wagmi hook):", usdcApproveError);
-      setTransactionStatus({ message: `USDC Approval failed: ${usdcApproveError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = usdcApproveError instanceof Error ? usdcApproveError.message : 'Unknown error.';
+      setTransactionStatus({ message: `USDC Approval failed: ${errorMessage}`, type: 'error' });
       setPendingUsdcApprovalForLp(false);
     }
     if (isUsdcApproveReceiptError) {
-      console.error("USDC Approve Receipt Error (Wagmi hook):", usdcApproveReceiptError);
-      setTransactionStatus({ message: `USDC Approval confirmation error: ${usdcApproveReceiptError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = usdcApproveReceiptError instanceof Error ? usdcApproveReceiptError.message : 'Unknown error.';
+      setTransactionStatus({ message: `USDC Approval confirmation error: ${errorMessage}`, type: 'error' });
       setPendingUsdcApprovalForLp(false);
     }
-  }, [usdcApproveHash, isUsdcApprovePending, isUsdcApproveConfirming, isUsdcApproveConfirmed, isUsdcApproveError, usdcApproveError, isUsdcApproveReceiptError, usdcApproveReceiptError, refetchUsdcAllowance, pendingUsdcApprovalForLp, sspyAmountToAdd, sspyAllowance, writeSspyApprove, writeAddLiquidity, SSPY_CONTRACT_ADDRESS, ETFINITY_PROTOCOL_CONTRACT_ADDRESS]);
+  }, [usdcApproveHash, isUsdcApprovePending, isUsdcApproveConfirming, isUsdcApproveConfirmed, isUsdcApproveError, usdcApproveError, isUsdcApproveReceiptError, usdcApproveReceiptError, refetchUsdcAllowance, pendingUsdcApprovalForLp, sspyAmountToAdd, sspyAllowance, writeSspyApprove, writeAddLiquidity, storedLpAmounts, currentContracts]);
 
   useEffect(() => {
     if (sspyApproveHash) {
@@ -277,8 +322,12 @@ const LiquidityPage: React.FC = () => {
       if (pendingSspyApprovalForLp) {
         setPendingSspyApprovalForLp(false);
         setTransactionStatus({ message: 'sSPY approved. Proceeding to add liquidity (check wallet)...', type: 'info' });
+        if (!currentContracts?.ETFINITY_PROTOCOL) {
+          setAddLpError("ETFINITY_PROTOCOL contract address is not defined for the current network.");
+          return;
+        }
         writeAddLiquidity({
-          address: ETFINITY_PROTOCOL_CONTRACT_ADDRESS,
+          address: currentContracts.ETFINITY_PROTOCOL,
           abi: etfinityProtocolAbi,
           functionName: 'addLiquidity',
           args: [storedLpAmounts.current.sspy, storedLpAmounts.current.usdc],
@@ -286,16 +335,16 @@ const LiquidityPage: React.FC = () => {
       }
     }
     if (isSspyApproveError) {
-      console.error("sSPY Approve Error (Wagmi hook):", sspyApproveError);
-      setTransactionStatus({ message: `sSPY Approval failed: ${sspyApproveError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = sspyApproveError instanceof Error ? sspyApproveError.message : 'Unknown error.';
+      setTransactionStatus({ message: `sSPY Approval failed: ${errorMessage}`, type: 'error' });
       setPendingSspyApprovalForLp(false);
     }
     if (isSspyApproveReceiptError) {
-      console.error("sSPY Approve Receipt Error (Wagmi hook):", sspyApproveReceiptError);
-      setTransactionStatus({ message: `sSPY Approval confirmation error: ${sspyApproveReceiptError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = sspyApproveReceiptError instanceof Error ? sspyApproveReceiptError.message : 'Unknown error.';
+      setTransactionStatus({ message: `sSPY Approval confirmation error: ${errorMessage}`, type: 'error' });
       setPendingSspyApprovalForLp(false);
     }
-  }, [sspyApproveHash, isSspyApprovePending, isSspyApproveConfirming, isSspyApproveConfirmed, isSspyApproveError, sspyApproveError, isSspyApproveReceiptError, sspyApproveReceiptError, refetchSspyAllowance, pendingSspyApprovalForLp, writeAddLiquidity]);
+  }, [sspyApproveHash, isSspyApprovePending, isSspyApproveConfirming, isSspyApproveConfirmed, isSspyApproveError, sspyApproveError, isSspyApproveReceiptError, sspyApproveReceiptError, refetchSspyAllowance, pendingSspyApprovalForLp, writeAddLiquidity, storedLpAmounts, currentContracts]);
 
 
   useEffect(() => {
@@ -319,12 +368,12 @@ const LiquidityPage: React.FC = () => {
       setUsdcAmountToAdd('');
     }
     if (isAddLpErrorWagmi) {
-      console.error("Add Liquidity Error (Wagmi hook):", addLpErrorWagmi);
-      setTransactionStatus({ message: `Add Liquidity failed: ${addLpErrorWagmi?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = addLpErrorWagmi instanceof Error ? addLpErrorWagmi.message : 'Unknown error.';
+      setTransactionStatus({ message: `Add Liquidity failed: ${errorMessage}`, type: 'error' });
     }
     if (isAddLpReceiptError) {
-      console.error("Add Liquidity Receipt Error (Wagmi hook):", addLpReceiptError);
-      setTransactionStatus({ message: `Add Liquidity confirmation error: ${addLpReceiptError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = addLpReceiptError instanceof Error ? addLpReceiptError.message : 'Unknown error.';
+      setTransactionStatus({ message: `Add Liquidity confirmation error: ${errorMessage}`, type: 'error' });
     }
   }, [addLpHash, isAddLpPending, isAddLpConfirming, isAddLpConfirmed, isAddLpErrorWagmi, addLpErrorWagmi, isAddLpReceiptError, addLpReceiptError, refetchUsdcBalance, refetchSspyBalance, refetchUsdcAllowance, refetchSspyAllowance, sspyAmountToAdd, usdcAmountToAdd, currentSp500Price]);
 
@@ -346,12 +395,12 @@ const LiquidityPage: React.FC = () => {
       setRemoveLpAmount('');
     }
     if (isRemoveLpErrorWagmi) {
-      console.error("Remove Liquidity Error (Wagmi hook):", removeLpErrorWagmi);
-      setTransactionStatus({ message: `Remove Liquidity failed: ${removeLpErrorWagmi?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = removeLpErrorWagmi instanceof Error ? removeLpErrorWagmi.message : 'Unknown error.';
+      setTransactionStatus({ message: `Remove Liquidity failed: ${errorMessage}`, type: 'error' });
     }
     if (isRemoveLpReceiptError) {
-      console.error("Remove Liquidity Receipt Error (Wagmi hook):", removeLpReceiptError);
-      setTransactionStatus({ message: `Remove Liquidity confirmation error: ${removeLpReceiptError?.message || 'Unknown error.'}`, type: 'error' });
+      const errorMessage = removeLpReceiptError instanceof Error ? removeLpReceiptError.message : 'Unknown error.';
+      setTransactionStatus({ message: `Remove Liquidity confirmation error: ${errorMessage}`, type: 'error' });
     }
   }, [removeLpHash, isRemoveLpPending, isRemoveLpConfirming, isRemoveLpConfirmed, isRemoveLpErrorWagmi, removeLpErrorWagmi, isRemoveLpReceiptError, removeLpReceiptError, refetchUsdcBalance, refetchSspyBalance, refetchUsdcAllowance, refetchSspyAllowance, removeLpAmount]);
 
@@ -363,6 +412,10 @@ const LiquidityPage: React.FC = () => {
     setTransactionStatus(null);
     if (!isConnected) {
       setAddLpError("Please connect your wallet to add liquidity.");
+      return;
+    }
+    if (!contractsLoaded) {
+      setAddLpError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
       return;
     }
 
@@ -391,13 +444,12 @@ const LiquidityPage: React.FC = () => {
         setPendingUsdcApprovalForLp(true);
         setTransactionStatus({ message: 'Approving USDC for liquidity pool (check wallet)...', type: 'info' });
         await writeUsdcApprove({
-          address: USDC_CONTRACT_ADDRESS,
+          address: currentContracts?.USDC,
           abi: erc20Abi,
           functionName: 'approve',
-          args: [ETFINITY_PROTOCOL_CONTRACT_ADDRESS, maxUint256],
+          args: [currentContracts?.ETFINITY_PROTOCOL as `0x${string}`, maxUint256],
         });
       } catch (err: unknown) {
-        console.error("Error during USDC approval initiation (LP):", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error during approval initiation.';
         setAddLpError(`USDC Approval failed: ${errorMessage}`);
         setTransactionStatus({ message: `USDC Approval failed: ${errorMessage}`, type: 'error' });
@@ -410,14 +462,18 @@ const LiquidityPage: React.FC = () => {
       try {
         setPendingSspyApprovalForLp(true);
         setTransactionStatus({ message: 'Approving sSPY for liquidity pool (check wallet)...', type: 'info' });
+        if (!currentContracts?.SSPY) {
+          setAddLpError("sSPY contract address is not defined for the current network.");
+          setPendingSspyApprovalForLp(false);
+          return;
+        }
         await writeSspyApprove({
-          address: SSPY_CONTRACT_ADDRESS,
+          address: currentContracts.SSPY,
           abi: erc20Abi,
           functionName: 'approve',
-          args: [ETFINITY_PROTOCOL_CONTRACT_ADDRESS, maxUint256],
+          args: [currentContracts.ETFINITY_PROTOCOL as `0x${string}`, maxUint256],
         });
       } catch (err: unknown) {
-        console.error("Error during sSPY approval initiation (LP):", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error during approval initiation.';
         setAddLpError(`sSPY Approval failed: ${errorMessage}`);
         setTransactionStatus({ message: `sSPY Approval failed: ${errorMessage}`, type: 'error' });
@@ -429,13 +485,12 @@ const LiquidityPage: React.FC = () => {
     try {
       setTransactionStatus({ message: 'Sending Add Liquidity transaction (check wallet)...', type: 'info' });
       await writeAddLiquidity({
-        address: ETFINITY_PROTOCOL_CONTRACT_ADDRESS,
+        address: currentContracts?.ETFINITY_PROTOCOL,
         abi: etfinityProtocolAbi,
         functionName: 'addLiquidity',
         args: [storedLpAmounts.current.sspy, storedLpAmounts.current.usdc],
       });
     } catch (err: unknown) {
-      console.error("Error during Add Liquidity transaction initiation:", err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error during add liquidity initiation.';
       setAddLpError(`Add Liquidity failed: ${errorMessage}`);
       setTransactionStatus({ message: `Add Liquidity failed: ${errorMessage}`, type: 'error' });
@@ -447,6 +502,10 @@ const LiquidityPage: React.FC = () => {
     setTransactionStatus(null);
     if (!isConnected) {
       setRemoveLpError("Please connect your wallet to remove liquidity.");
+      return;
+    }
+    if (!contractsLoaded) {
+      setRemoveLpError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
       return;
     }
 
@@ -464,17 +523,16 @@ const LiquidityPage: React.FC = () => {
         return;
     }
 
-    const lpTokensToBurn = parseUnits(amount.toString(), SSPY_DECIMALS);
+    const lpTokensToBurn = parseUnits(amount.toString(), SSPY_DECIMALS); // Using SSPY_DECIMALS as a placeholder for LP token decimals
     try {
       setTransactionStatus({ message: 'Sending Remove Liquidity transaction (check wallet)...', type: 'info' });
       await writeRemoveLiquidity({
-        address: ETFINITY_PROTOCOL_CONTRACT_ADDRESS,
+        address: currentContracts?.ETFINITY_PROTOCOL,
         abi: etfinityProtocolAbi,
         functionName: 'removeLiquidity',
         args: [lpTokensToBurn],
       });
     } catch (err: unknown) {
-      console.error("Error during Remove Liquidity transaction initiation:", err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error during remove liquidity initiation.';
       setRemoveLpError(`Remove Liquidity failed: ${errorMessage}`);
       setTransactionStatus({ message: `Remove Liquidity failed: ${errorMessage}`, type: 'error' });
@@ -524,10 +582,10 @@ const LiquidityPage: React.FC = () => {
               <span className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-zinc-400 text-sm top-8">USDC</span>
             </div>
             <p className="text-zinc-400 text-sm mt-2 font-semibold text-center">
-              Your sSPY: <span className="text-white">{isConnected && !isLoadingSspyBalance ? userSspyHoldings.toFixed(4) : 'Connect Wallet'}</span> | Your USDC: <span className="text-white">${isConnected && !isLoadingUsdcBalance ? userUsdcHoldings.toFixed(2) : 'Connect Wallet'}</span>
+              Your sSPY: <span className="text-white">{isConnected && !isLoadingSspyBalance && contractsLoaded ? userSspyHoldings.toFixed(4) : 'Connect Wallet / Unsupported Network'}</span> | Your USDC: <span className="text-white">${isConnected && !isLoadingUsdcBalance && contractsLoaded ? userUsdcHoldings.toFixed(2) : 'Connect Wallet / Unsupported Network'}</span>
             </p>
             <p className="text-zinc-400 text-sm mt-2 font-semibold text-center">
-              USDC Allowance: <span className="text-white">${isConnected && !isLoadingUsdcAllowance ? usdcAllowance.toFixed(2) : 'N/A'}</span> | sSPY Allowance: <span className="text-white">{isConnected && !isLoadingSspyAllowance ? sspyAllowance.toFixed(4) : 'N/A'}</span>
+              USDC Allowance: <span className="text-white">${isConnected && !isLoadingUsdcAllowance && contractsLoaded ? usdcAllowance.toFixed(2) : 'N/A'}</span> | sSPY Allowance: <span className="text-white">{isConnected && !isLoadingSspyAllowance && contractsLoaded ? sspyAllowance.toFixed(4) : 'N/A'}</span>
             </p>
           </div>
 
@@ -535,6 +593,7 @@ const LiquidityPage: React.FC = () => {
             onClick={handleAddLiquidity}
             disabled={
               !isConnected ||
+              !contractsLoaded ||
               parseFloat(sspyAmountToAdd || '0') <= 0 ||
               parseFloat(usdcAmountToAdd || '0') <= 0 ||
               parseFloat(sspyAmountToAdd || '0') > userSspyHoldings ||
@@ -543,6 +602,7 @@ const LiquidityPage: React.FC = () => {
               isSspyApprovePending || isSspyApproveConfirming || pendingSspyApprovalForLp ||
               isAddLpPending || isAddLpConfirming
             }
+            title={!isConnected ? "Connect wallet" : (!contractsLoaded ? "Unsupported network" : "")}
             className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg text-lg shadow-lg transform transition-all duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
           >
             {(isUsdcApprovePending || isUsdcApproveConfirming || pendingUsdcApprovalForLp) ? 'Approving USDC...' :
@@ -557,7 +617,7 @@ const LiquidityPage: React.FC = () => {
 
         <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700 flex flex-col">
           <h3 className="text-2xl font-bold text-white mb-4 flex items-center justify-center">
-            <ArrowDownCircle size={28} className="mr-3 text-purple-400" /> Remove Liquity
+            <ArrowDownCircle size={28} className="mr-3 text-purple-400" /> Remove Liquidity
           </h3>
           <p className="text-zinc-300 text-sm mb-6 text-center">Withdraw your assets from the sSPY/USDC liquidity pool.</p>
 
@@ -589,11 +649,13 @@ const LiquidityPage: React.FC = () => {
             onClick={handleRemoveLiquidity}
             disabled={
               !isConnected ||
+              !contractsLoaded ||
               userLpHoldingsValue <= 0 ||
               parseFloat(removeLpAmount || '0') <= 0 ||
               parseFloat(removeLpAmount || '0') > userLpHoldingsValue ||
               isRemoveLpPending || isRemoveLpConfirming
             }
+            title={!isConnected ? "Connect wallet" : (!contractsLoaded ? "Unsupported network" : "")}
             className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg text-lg shadow-lg transform transition-all duration-200 hover:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-75 disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
           >
             {(isRemoveLpPending || isRemoveLpConfirming) ? 'Removing Liquidity...' : 'Remove Liquidity'}
@@ -611,14 +673,14 @@ const LiquidityPage: React.FC = () => {
           transactionStatus.type === 'error' ? 'bg-red-900 text-red-200' : 'bg-zinc-700 text-zinc-300'
         }`}>
           <p>{transactionStatus.message}</p>
-          {transactionStatus.hash && (
+          {transactionStatus.hash && chain?.blockExplorers?.etherscan?.url && (
                 <a
-                  href={`https://sepolia.arbiscan.io/tx/${transactionStatus.hash}`}
+                  href={`${chain.blockExplorers.etherscan.url}/tx/${transactionStatus.hash}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block mt-2 text-purple-300 hover:underline"
                 >
-                  View Transaction on Arbiscan
+                  View Transaction on {chain.blockExplorers.etherscan.name || 'Explorer'}
                 </a>
               )}
         </div>
