@@ -7,7 +7,6 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi';
 import {
-  arbitrumSepolia,
   sepolia,
 } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -29,7 +28,6 @@ const config = getDefaultConfig({
   appName: 'Etfinity Protocol',
   projectId: walletConnectProjectId || 'YOUR_FALLBACK_PROJECT_ID', 
   chains: [
-    arbitrumSepolia,
     sepolia,
   ],
   ssr: true, // This is important for RainbowKit's internal SSR handling

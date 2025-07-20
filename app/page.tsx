@@ -8,19 +8,21 @@ import { useAccount, useReadContract, useWriteContract, useWaitForTransactionRec
 import { parseUnits, formatUnits, maxUint256 } from 'viem';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
-// Import ABIs
+// Import ABIs for ERC20, Chainlink Aggregator V3, and Etfinity Protocol contracts.
 import { erc20Abi } from '../contracts/abi/Erc20Abi';
 import { chainlinkAggregatorV3Abi } from '../contracts/abi/ChainlinkAggregatorV3Abi';
 import { etfinityProtocolAbi } from '../contracts/abi/EtfinityProtocolAbi';
 
 /**
- * @dev Defines all contract addresses per network.
+ * @dev Defines all deployed contract addresses per network.
  * These values are loaded from environment variables (e.g., .env.local).
+ * Ensure these addresses are correctly configured for each supported chain.
  */
 const CONTRACT_ADDRESSES: Record<number, {
   USDC: `0x${string}`;
   SSPY: `0x${string}`;
   CHAINLINK_SP500_PRICE_FEED: `0x${string}`;
+  CHAINLINK_USDC_PRICE_FEED?: `0x${string}`; // Optional for chains where USDC price feed might not be directly used on this page
   ETFINITY_PROTOCOL: `0x${string}`;
 }> = {
   // Arbitrum Sepolia Addresses (Chain ID: 421614)
@@ -28,6 +30,7 @@ const CONTRACT_ADDRESSES: Record<number, {
     USDC: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_USDC_CONTRACT_ADDRESS as `0x${string}`,
     SSPY: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_SSPY_CONTRACT_ADDRESS as `0x${string}`,
     CHAINLINK_SP500_PRICE_FEED: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`,
+    CHAINLINK_USDC_PRICE_FEED: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_CHAINLINK_USDC_PRICE_FEED_ADDRESS as `0x${string}`,
     ETFINITY_PROTOCOL: process.env.NEXT_PUBLIC_ARBITRUM_SEPOLIA_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`,
   },
   // Sepolia Addresses (Chain ID: 11155111)
@@ -35,11 +38,12 @@ const CONTRACT_ADDRESSES: Record<number, {
     USDC: process.env.NEXT_PUBLIC_SEPOLIA_USDC_CONTRACT_ADDRESS as `0x${string}`,
     SSPY: process.env.NEXT_PUBLIC_SEPOLIA_SSPY_CONTRACT_ADDRESS as `0x${string}`,
     CHAINLINK_SP500_PRICE_FEED: process.env.NEXT_PUBLIC_SEPOLIA_CHAINLINK_SP500_PRICE_FEED_ADDRESS as `0x${string}`,
+    CHAINLINK_USDC_PRICE_FEED: process.env.NEXT_PUBLIC_SEPOLIA_CHAINLINK_USDC_PRICE_FEED_ADDRESS as `0x${string}`,
     ETFINITY_PROTOCOL: process.env.NEXT_PUBLIC_SEPOLIA_ETFINITY_PROTOCOL_CONTRACT_ADDRESS as `0x${string}`,
   },
 };
 
-// Define token and price feed decimals
+// Define token and Chainlink price feed decimals for accurate unit conversion.
 const USDC_DECIMALS = 6;
 const SSPY_DECIMALS = 18;
 const CHAINLINK_PRICE_FEED_DECIMALS = 8;
@@ -48,32 +52,37 @@ const HomePage: React.FC = () => {
   const router = useRouter();
   const { address, isConnected, chain } = useAccount();
 
+  // State variables for UI and transaction management.
   const [activeTab, setActiveTab] = useState('mint');
   const [collateralAmount, setCollateralAmount] = useState('');
-  const [selectedCollateral, setSelectedCollateral] = useState('USDC');
+  const [selectedCollateral, setSelectedCollateral] = useState('USDC'); // Currently only USDC is supported
   const [sspyAmount, setSspyAmount] = useState('');
   const [mintError, setMintError] = useState('');
   const [redeemError, setRedeemError] = useState('');
   const [transactionStatus, setTransactionStatus] = useState<{ message: string, type: 'info' | 'success' | 'error' | null, hash?: `0x${string}` } | null>(null);
 
+  // State to track if an approval transaction is pending before minting.
   const [pendingMintApproval, setPendingMintApproval] = useState(false);
+  // Ref to store the collateral amount in Wei for minting after approval.
   const collateralAmountRef = useRef<bigint>(BigInt(0));
 
-  // Dynamically select contract addresses based on connected chain
+  // Dynamically select contract addresses based on the currently connected chain.
   const currentChainId = chain?.id;
   const currentContracts = currentChainId ? CONTRACT_ADDRESSES[currentChainId] : undefined;
 
-  // Flag to enable/disable contract interactions based on network support
+  // Flag to enable/disable contract interactions if contracts for the current chain are defined.
   const contractsLoaded = !!currentContracts;
 
-  // Provide a warning/error if contracts for the current chain are not found
+  /**
+   * @dev Effect to handle unsupported network connections.
+   * Displays an error message to the user if connected to an unconfigured chain.
+   */
   useEffect(() => {
     if (isConnected && !currentContracts) {
-      console.warn(`No contract addresses defined for chain ID: ${currentChainId}. Please connect to a supported testnet (Sepolia or Arbitrum Sepolia).`);
       setMintError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
       setRedeemError("Unsupported network. Please connect to Sepolia or Arbitrum Sepolia.");
     } else if (!isConnected) {
-      // Clear errors if disconnected
+      // Clear errors when disconnected.
       setMintError("");
       setRedeemError("");
     }
@@ -82,7 +91,9 @@ const HomePage: React.FC = () => {
 
   // --- READ CONTRACT DATA ---
 
-  // 1. Read S&P 500 Price from Chainlink
+  /**
+   * @dev Fetches the latest S&P 500 price from the Chainlink oracle.
+   */
   const { data: sp500PriceData, isLoading: isLoadingSp500Price } = useReadContract({
     address: currentContracts?.CHAINLINK_SP500_PRICE_FEED,
     abi: chainlinkAggregatorV3Abi,
@@ -90,13 +101,15 @@ const HomePage: React.FC = () => {
     args: [],
     query: {
       enabled: contractsLoaded,
-      refetchInterval: 10000,
+      refetchInterval: 10000, // Refetch every 10 seconds to keep price updated.
     },
   });
   const sp500PriceRaw = sp500PriceData ? (sp500PriceData[1] as bigint) : BigInt(0);
   const sp500Price = sp500PriceRaw ? parseFloat(formatUnits(sp500PriceRaw, CHAINLINK_PRICE_FEED_DECIMALS)) : 0;
 
-  // 2. Read Collateralization Ratio from protocol contract
+  /**
+   * @dev Reads the target collateralization ratio from the Etfinity Protocol contract.
+   */
   const { data: collateralizationRatioRaw, isLoading: isLoadingCollateralRatio } = useReadContract({
     address: currentContracts?.ETFINITY_PROTOCOL,
     abi: etfinityProtocolAbi,
@@ -109,7 +122,9 @@ const HomePage: React.FC = () => {
   });
   const collateralizationRatio = collateralizationRatioRaw ? Number(collateralizationRatioRaw) / 100 : 0;
 
-  // 3. Read User USDC Balance
+  /**
+   * @dev Fetches the connected user's USDC balance.
+   */
   const { data: userUsdcBalanceRaw, isLoading: isLoadingUsdcBalance, refetch: refetchUsdcBalance } = useReadContract({
     address: currentContracts?.USDC,
     abi: erc20Abi,
@@ -117,12 +132,14 @@ const HomePage: React.FC = () => {
     args: [address as `0x${string}`],
     query: {
       enabled: isConnected && !!address && contractsLoaded,
-      refetchInterval: 5000,
+      refetchInterval: 5000, // Refetch every 5 seconds.
     },
   });
   const userUsdcHoldings = userUsdcBalanceRaw ? parseFloat(formatUnits(userUsdcBalanceRaw, USDC_DECIMALS)) : 0;
 
-  // 4. Read User sSPY Balance
+  /**
+   * @dev Fetches the connected user's sSPY balance.
+   */
   const { data: userSspyBalanceRaw, isLoading: isLoadingSspyBalance, refetch: refetchSspyBalance } = useReadContract({
     address: currentContracts?.SSPY,
     abi: erc20Abi,
@@ -135,7 +152,9 @@ const HomePage: React.FC = () => {
   });
   const userSspyHoldings = userSspyBalanceRaw ? parseFloat(formatUnits(userSspyBalanceRaw, SSPY_DECIMALS)) : 0;
 
-  // 5. Read USDC Allowance for Protocol Contract
+  /**
+   * @dev Fetches the USDC allowance granted to the Etfinity Protocol contract by the user.
+   */
   const { data: usdcAllowanceRaw, isLoading: isLoadingUsdcAllowance, refetch: refetchUsdcAllowance } = useReadContract({
     address: currentContracts?.USDC,
     abi: erc20Abi,
@@ -150,6 +169,11 @@ const HomePage: React.FC = () => {
 
 
   // --- CALCULATIONS ---
+
+  /**
+   * @dev Calculates the amount of sSPY that can be minted for a given collateral amount.
+   * Uses the S&P 500 price and target collateralization ratio.
+   */
   const calculateSspy = useCallback((amount: string): string => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0 || sp500Price === 0 || collateralizationRatio === 0) {
@@ -160,6 +184,10 @@ const HomePage: React.FC = () => {
     return (parsedAmount / denominator).toFixed(4);
   }, [sp500Price, collateralizationRatio]);
 
+  /**
+   * @dev Calculates the collateral required to redeem a given amount of sSPY.
+   * Uses the S&P 500 price and target collateralization ratio.
+   */
   const calculateCollateral = useCallback((amount: string): string => {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0 || sp500Price === 0 || collateralizationRatio === 0) {
@@ -172,12 +200,19 @@ const HomePage: React.FC = () => {
 
 
   // --- EFFECTS FOR UI UPDATES ---
+
+  /**
+   * @dev Updates the sSPY amount field when collateral amount changes in the 'mint' tab.
+   */
   useEffect(() => {
     if (activeTab === 'mint') {
       setSspyAmount(calculateSspy(collateralAmount));
     }
   }, [collateralAmount, activeTab, calculateSspy]);
 
+  /**
+   * @dev Updates the collateral amount field when sSPY amount changes in the 'redeem' tab.
+   */
   useEffect(() => {
     if (activeTab === 'redeem') {
       setCollateralAmount(calculateCollateral(sspyAmount));
@@ -187,7 +222,7 @@ const HomePage: React.FC = () => {
 
   // --- WRITE CONTRACT INTERACTIONS ---
 
-  // 1. USDC Approve Transaction
+  // Wagmi hooks for USDC approval transaction.
   const {
     data: approveHash,
     writeContract: writeApprove,
@@ -203,7 +238,7 @@ const HomePage: React.FC = () => {
     error: approveReceiptError,
   } = useWaitForTransactionReceipt({ hash: approveHash });
 
-  // 2. Mint Transaction
+  // Wagmi hooks for sSPY minting transaction.
   const {
     data: mintHash,
     writeContract: writeMint,
@@ -219,7 +254,7 @@ const HomePage: React.FC = () => {
     error: mintReceiptError,
   } = useWaitForTransactionReceipt({ hash: mintHash });
 
-  // 3. Redeem Transaction
+  // Wagmi hooks for sSPY redemption transaction.
   const {
     data: redeemHash,
     writeContract: writeRedeem,
@@ -237,17 +272,19 @@ const HomePage: React.FC = () => {
 
 
   // --- Transaction Status Management ---
-  useEffect(() => {
-    // console.log("Transaction Status State Changed:", transactionStatus); // Debugging log, can be removed in production
-  }, [transactionStatus]);
 
-
+  /**
+   * @dev Updates transaction status message when a transaction is pending wallet confirmation.
+   */
   useEffect(() => {
     if (isApprovePending || isMintPending || isRedeemPending) {
       setTransactionStatus({ message: 'Waiting for wallet confirmation...', type: 'info' });
     }
   }, [isApprovePending, isMintPending, isRedeemPending]);
 
+  /**
+   * @dev Handles updates for USDC approval transaction status.
+   */
   useEffect(() => {
     if (approveHash) {
       setTransactionStatus({ message: `Approval transaction sent! Hash: ${approveHash}`, type: 'info', hash: approveHash });
@@ -257,8 +294,9 @@ const HomePage: React.FC = () => {
     }
     if (isApproveConfirmed) {
       setTransactionStatus({ message: 'Approval confirmed successfully! Proceeding with mint if applicable.', type: 'success', hash: approveHash });
-      refetchUsdcAllowance();
+      refetchUsdcAllowance(); // Refetch allowance after successful approval.
 
+      // If minting was pending approval, proceed with mint transaction.
       if (pendingMintApproval) {
         setPendingMintApproval(false);
         setTransactionStatus({ message: 'Approval confirmed. Proceeding to mint sSPY...', type: 'info' });
@@ -275,17 +313,17 @@ const HomePage: React.FC = () => {
       }
     }
     if (isApproveError) {
-      console.error("Approve Error (Wagmi hook):", approveError);
       setTransactionStatus({ message: `Approval failed: ${approveError?.message || 'Unknown error.'}`, type: 'error' });
       setPendingMintApproval(false);
     }
     if (isApproveReceiptError) {
-      console.error("Approve Receipt Error (Wagmi hook):", approveReceiptError);
       setTransactionStatus({ message: `Approval confirmation error: ${approveReceiptError?.message || 'Unknown error.'}`, type: 'error' });
     }
   }, [approveHash, isApprovePending, isApproveConfirming, isApproveConfirmed, isApproveError, approveError, isApproveReceiptError, approveReceiptError, refetchUsdcAllowance, pendingMintApproval, writeMint, currentContracts]);
 
-
+  /**
+   * @dev Handles updates for sSPY minting transaction status.
+   */
   useEffect(() => {
     if (mintHash) {
       setTransactionStatus({ message: `Mint transaction sent! Hash: ${mintHash}`, type: 'info', hash: mintHash });
@@ -295,11 +333,11 @@ const HomePage: React.FC = () => {
     }
     if (isMintConfirmed) {
       setTransactionStatus({ message: 'Mint confirmed successfully!', type: 'success', hash: mintHash });
-      refetchUsdcBalance();
-      refetchSspyBalance();
-      setCollateralAmount('');
+      refetchUsdcBalance(); // Update USDC balance.
+      refetchSspyBalance(); // Update sSPY balance.
+      setCollateralAmount(''); // Clear input fields.
       setSspyAmount('');
-      router.push('/dashboard');
+      router.push('/dashboard'); // Navigate to dashboard after successful mint.
     }
     if (isMintError) {
       setTransactionStatus({ message: `Mint failed: ${mintErrorWagmi?.message || 'Unknown error.'}`, type: 'error' });
@@ -309,6 +347,9 @@ const HomePage: React.FC = () => {
     }
   }, [mintHash, isMintPending, isMintConfirming, isMintConfirmed, isMintError, mintErrorWagmi, isMintReceiptError, mintReceiptError, refetchUsdcBalance, refetchSspyBalance, router]);
 
+  /**
+   * @dev Handles updates for sSPY redemption transaction status.
+   */
   useEffect(() => {
     if (redeemHash) {
       setTransactionStatus({ message: `Redeem transaction sent! Hash: ${redeemHash}`, type: 'info', hash: redeemHash });
@@ -318,9 +359,9 @@ const HomePage: React.FC = () => {
     }
     if (isRedeemConfirmed) {
       setTransactionStatus({ message: 'Redeem confirmed successfully!', type: 'success', hash: redeemHash });
-      refetchUsdcBalance();
-      refetchSspyBalance();
-      setCollateralAmount('');
+      refetchUsdcBalance(); // Update USDC balance.
+      refetchSspyBalance(); // Update sSPY balance.
+      setCollateralAmount(''); // Clear input fields.
       setSspyAmount('');
     }
     if (isRedeemError) {
@@ -332,8 +373,11 @@ const HomePage: React.FC = () => {
   }, [redeemHash, isRedeemPending, isRedeemConfirming, isRedeemConfirmed, isRedeemError, redeemErrorWagmi, isRedeemReceiptError, redeemReceiptError, refetchUsdcBalance, refetchSspyBalance]);
 
 
-  // --- HANDLERS FOR MINT/REDEEM ---
+  // --- HANDLERS FOR MINT/REDEEM ACTIONS ---
 
+  /**
+   * @dev Handles the minting process, including USDC approval if necessary.
+   */
   const handleMint = async () => {
     setMintError('');
     setTransactionStatus(null);
@@ -357,8 +401,10 @@ const HomePage: React.FC = () => {
     }
 
     const collateralAmountWei = parseUnits(collateralInputFloat.toString(), USDC_DECIMALS);
+    // Store the amount in ref for potential subsequent mint after approval.
     collateralAmountRef.current = collateralAmountWei;
 
+    // Check if approval is needed before minting.
     if (collateralInputFloat > usdcAllowance) {
       try {
         setPendingMintApproval(true);
@@ -367,10 +413,9 @@ const HomePage: React.FC = () => {
           address: currentContracts?.USDC,
           abi: erc20Abi,
           functionName: 'approve',
-          args: [currentContracts?.ETFINITY_PROTOCOL as `0x${string}`, maxUint256],
+          args: [currentContracts?.ETFINITY_PROTOCOL as `0x${string}`, maxUint256], // Approve maximum amount for convenience.
         });
       } catch (err: unknown) {
-        console.error("Error during USDC approval initiation:", err);
         const errorMessage = err instanceof Error ? err.message : 'Unknown error during approval initiation.';
         setMintError(`Approval failed: ${errorMessage}`);
         setTransactionStatus({ message: `Approval failed: ${errorMessage}`, type: 'error' });
@@ -379,6 +424,7 @@ const HomePage: React.FC = () => {
       return;
     }
 
+    // Proceed with minting if approval is sufficient or not needed.
     try {
       setTransactionStatus({ message: 'Sending mint transaction (check wallet)...', type: 'info' });
       await writeMint({
@@ -388,14 +434,15 @@ const HomePage: React.FC = () => {
         args: [collateralAmountWei],
       });
     } catch (err: unknown) {
-      console.error("Error during Mint transaction initiation:", err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error during mint initiation.';
       setMintError(`Mint transaction failed: ${errorMessage}`);
       setTransactionStatus({ message: `Mint transaction failed: ${errorMessage}`, type: 'error' });
     }
   };
 
-
+  /**
+   * @dev Handles the sSPY redemption process.
+   */
   const handleRedeem = async () => {
     setRedeemError('');
     setTransactionStatus(null);
@@ -429,16 +476,15 @@ const HomePage: React.FC = () => {
         args: [sspyAmountWei],
       });
     } catch (err: unknown) {
-      console.error("Error during Redeem transaction initiation:", err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error during redeem initiation.';
       setRedeemError(`Redeem transaction failed: ${errorMessage}`);
       setTransactionStatus({ message: `Redeem transaction failed: ${errorMessage}`, type: 'error' });
     }
   };
 
-
   return (
     <main>
+      {/* Hero Section */}
       <section className="text-center py-16 px-6 md:py-24">
         <h2 className="text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4 drop-shadow-md">
           Synthetic ETFs in Your wallet
@@ -448,6 +494,7 @@ const HomePage: React.FC = () => {
           Access a growing range of synthetic assets, starting with sSPY, directly from your crypto wallet.
           Experience true ownership and decentralized finance.
         </p>
+        {/* Connect button for disconnected state */}
         {!isConnected && (
           <ConnectButton.Custom>
             {({
@@ -484,8 +531,10 @@ const HomePage: React.FC = () => {
         )}
       </section>
 
+      {/* Main Dapp Interface (Mint/Redeem) */}
       <div className="container mx-auto px-4 py-8 max-w-3xl">
         <div className="bg-zinc-800 rounded-2xl shadow-2xl p-6 md:p-8 border border-zinc-700">
+          {/* Tab navigation for Mint/Redeem */}
           <div className="flex justify-center mb-6">
             <button
               onClick={() => { setActiveTab('mint'); setMintError(''); setTransactionStatus(null); }}
@@ -509,6 +558,7 @@ const HomePage: React.FC = () => {
             </button>
           </div>
 
+          {/* Protocol Info Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-center">
             <div className="bg-zinc-700 p-4 rounded-xl shadow-inner flex flex-col items-center justify-center">
               <BarChart3 size={24} className="text-purple-400 mb-2" />
@@ -526,6 +576,7 @@ const HomePage: React.FC = () => {
             </div>
           </div>
 
+          {/* Mint sSPY Tab Content */}
           {activeTab === 'mint' && (
             <div className="space-y-6">
               <div className="relative">
@@ -603,6 +654,7 @@ const HomePage: React.FC = () => {
             </div>
           )}
 
+          {/* Redeem sSPY Tab Content */}
           {activeTab === 'redeem' && (
             <div className="space-y-6">
               <div className="relative">
@@ -667,6 +719,7 @@ const HomePage: React.FC = () => {
             </div>
           )}
 
+          {/* Transaction Status Message */}
           {transactionStatus && (
             <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 w-11/12 max-w-md p-4 rounded-lg text-sm text-center shadow-lg z-50 ${
               transactionStatus.type === 'info' ? 'bg-blue-900 text-blue-200' :
@@ -686,7 +739,6 @@ const HomePage: React.FC = () => {
               )}
             </div>
           )}
-
         </div>
       </div>
     </main>
